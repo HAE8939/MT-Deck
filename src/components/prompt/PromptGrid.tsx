@@ -79,7 +79,13 @@ export function PromptGrid({ prompts }: { prompts: Prompt[] }) {
       <div className="empty-state">
         <p className="empty-title">还没有提示词。</p>
         <p className="empty-sub">
-          {emptyHint ?? "创建你的第一条提示词，或将 Markdown 文件放入该文件夹。"}
+          {emptyHint ?? (
+            <>
+              创建你的第一条提示词，
+              <br />
+              或将 Markdown 文件放入该文件夹。
+            </>
+          )}
         </p>
         {!app.searchQuery && app.nav.kind === "all" && (
           <button className="btn btn-primary" onClick={() => openEditor()}>

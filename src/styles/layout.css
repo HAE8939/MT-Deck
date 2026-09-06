@@ -387,6 +387,15 @@ body {
   color: var(--color-ink);
 }
 
+.search-input:focus-visible {
+  outline: none;
+}
+
+.search-wrap.is-focused {
+  border-color: var(--color-accent-brass);
+  box-shadow: 0 0 0 1px var(--color-accent-brass);
+}
+
 .search-input::placeholder {
   color: var(--color-ink-muted);
 }

@@ -1,0 +1,313 @@
+/* MT-Deck — components (Atelier Index: quiet, editorial, hairline-driven) */
+
+/* ---------------- Buttons ---------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--color-accent-brass);
+  color: #fff;
+}
+
+[data-theme="dark"] .btn-primary {
+  color: #16181c;
+}
+
+.btn-primary:hover {
+  background: var(--color-ink);
+}
+
+[data-theme="dark"] .btn-primary:hover {
+  background: #edeae3;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-ink);
+  border-color: var(--color-hairline);
+}
+
+.btn-ghost:hover {
+  background: var(--color-accent-brass-soft);
+  border-color: var(--color-accent-brass);
+  color: var(--color-accent-brass);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--color-danger);
+  border-color: var(--color-hairline);
+}
+
+.btn-danger:hover {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #fff;
+}
+
+.btn-new {
+  flex-shrink: 0;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+  flex-shrink: 0;
+}
+
+.icon-btn:hover {
+  background: var(--color-accent-brass-soft);
+  color: var(--color-ink);
+}
+
+.icon-btn-danger:hover {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.icon-btn.is-active {
+  color: var(--color-accent-brass);
+}
+
+/* ---------------- Focus states (spec §26: 2px brass, 2px offset) ---------------- */
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent-brass);
+  outline-offset: 2px;
+}
+
+/* ---------------- Prompt cards (spec §33, §48–49) ---------------- */
+
+.prompt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 280px;
+  padding: 20px;
+  background: var(--color-surface);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--motion-base), transform var(--motion-base);
+}
+
+.prompt-card:hover {
+  border-color: var(--color-hairline);
+  transform: translateY(-2px);
+}
+
+.prompt-card.is-focused {
+  border-color: var(--color-hairline);
+}
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.card-title {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 26px;
+  margin: 0;
+  flex: 1;
+  overflow-wrap: break-word;
+}
+
+.card-fav {
+  width: 26px;
+  height: 26px;
+  opacity: 0;
+  transition: opacity var(--motion-fast), color var(--motion-fast);
+}
+
+.prompt-card:hover .card-fav,
+.card-fav.is-active,
+.card-fav:focus-visible {
+  opacity: 1;
+}
+
+.card-fav:hover {
+  color: var(--color-accent-brass);
+}
+
+.card-desc {
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--color-ink-muted);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-preview {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--color-ink);
+  opacity: 0.82;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.tag {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-green-soft);
+  color: var(--color-accent-green);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.card-model {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+.card-more {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+/* ---------------- Empty states (spec §39) ---------------- */
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px;
+  text-align: center;
+}
+
+.empty-title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  margin: 0;
+}
+
+.empty-sub {
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  margin: 0 0 14px;
+  max-width: 360px;
+}
+
+/* ---------------- First launch (spec §40) ---------------- */
+
+.first-launch {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-ground);
+}
+
+.first-launch-card {
+  text-align: center;
+  max-width: 420px;
+  padding: 40px;
+}
+
+.first-launch-logo {
+  display: block;
+  margin: 0 auto 14px;
+  color: var(--color-accent-brass);
+}
+
+.first-launch-tagline {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  margin: 18px 0 4px;
+}
+
+.first-launch-sub {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  margin: 0 0 28px;
+}
+
+.first-launch-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.first-launch-or {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+/* ---------------- Scrollbars ---------------- */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-hairline);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-muted);
+  background-clip: content-box;
+  border: 2px solid transparent;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------------- Selection ---------------- */
+
+::selection {
+  background: var(--color-accent-brass-soft);
+}

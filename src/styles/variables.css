@@ -1,0 +1,65 @@
+/* MT-Deck — Atelier Index design tokens (spec §28, §44) */
+
+:root {
+  --color-ground: #efede6;
+  --color-surface: #f7f5f0;
+  --color-surface-raised: #ffffff;
+
+  --color-ink: #211f1c;
+  --color-ink-muted: #6f6a61;
+
+  --color-hairline: #dedad0;
+
+  --color-accent-brass: #9c7a3c;
+  --color-accent-brass-soft: rgba(156, 122, 60, 0.12);
+  --color-accent-green: #3f4f3e;
+  --color-accent-green-soft: rgba(63, 79, 62, 0.1);
+
+  --color-danger: #8c3b2e;
+
+  --font-serif: "Newsreader", "Source Serif 4", Georgia, serif;
+  --font-sans: "Public Sans", "IBM Plex Sans", system-ui, sans-serif;
+
+  --radius-sm: 4px;
+  --radius-md: 10px;
+
+  --motion-fast: 120ms ease-out;
+  --motion-base: 200ms ease-out;
+  --motion-panel: 280ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  --shadow-panel: 0 10px 32px rgba(33, 31, 28, 0.1), 0 2px 8px rgba(33, 31, 28, 0.06);
+  --shadow-modal: 0 24px 64px rgba(33, 31, 28, 0.18), 0 4px 16px rgba(33, 31, 28, 0.08);
+
+  --sidebar-width: 240px;
+}
+
+[data-theme="dark"] {
+  --color-ground: #16181c;
+  --color-surface: #1d1f23;
+  --color-surface-raised: #24262b;
+
+  --color-ink: #edeae3;
+  --color-ink-muted: #8b877e;
+
+  --color-hairline: #2c2e31;
+
+  --color-accent-brass: #c9a24e;
+  --color-accent-brass-soft: rgba(201, 162, 78, 0.14);
+  --color-accent-green: #7c9b7c;
+  --color-accent-green-soft: rgba(124, 155, 124, 0.12);
+
+  --color-danger: #c96a55;
+
+  --shadow-panel: 0 10px 32px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

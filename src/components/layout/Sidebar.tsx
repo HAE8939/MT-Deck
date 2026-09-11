@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useApp, setNav, setTheme, changeLibrary, type Nav } from "../../store/store";
 import { deriveFolders, deriveModels, deriveTags } from "../../store/store";
-import { FolderIcon, StarIcon, ClockIcon, SunIcon, MoonIcon, MonitorIcon } from "../common/icons";
+import { FolderIcon, StarIcon, ClockIcon, SunIcon, MoonIcon, MonitorIcon, ChevronDownIcon } from "../common/icons";
 import { Logo } from "../common/Logo";
 import type { ThemeMode } from "../../types/prompt";
+import { getVisibleFolders } from "./folderTree";
 
 function NavButton({
   active,
@@ -27,10 +28,21 @@ function NavButton({
   );
 }
 
-function SidebarSection({ title, children }: { title: string; children: ReactNode }) {
+function SidebarSection({
+  title,
+  children,
+  action,
+}: {
+  title: string;
+  children: ReactNode;
+  action?: ReactNode;
+}) {
   return (
     <div className="side-section">
-      <div className="side-section-title">{title}</div>
+      <div className="side-section-heading">
+        <div className="side-section-title">{title}</div>
+        {action}
+      </div>
       {children}
     </div>
   );
@@ -38,8 +50,11 @@ function SidebarSection({ title, children }: { title: string; children: ReactNod
 
 export function Sidebar() {
   const app = useApp();
+  const [foldersCollapsed, setFoldersCollapsed] = useState(false);
+  const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(() => new Set());
   const prompts = app.prompts;
   const folders = deriveFolders(prompts);
+  const visibleFolders = getVisibleFolders(folders, collapsedPaths);
   const tags = deriveTags(prompts);
   const models = deriveModels(prompts);
   const favoriteCount = prompts.filter((p) => p.id && app.favorites.includes(p.id)).length;
@@ -95,24 +110,72 @@ export function Sidebar() {
       </nav>
 
       {folders.length > 0 && (
-        <SidebarSection title="文件夹">
-          <div className="side-tree">
-            {folders.map((f) => (
-              <button
-                key={f.path}
-                className={`side-item side-folder${isNavActive({ kind: "folder", value: f.path }) ? " is-active" : ""}`}
-                style={{ paddingLeft: 12 + f.depth * 14 }}
-                onClick={() => setNav({ kind: "folder", value: f.path })}
-                title={f.path}
-              >
-                <span className="side-item-icon">
-                  <FolderIcon size={15} />
-                </span>
-                <span className="side-item-label">{f.name}</span>
-                <span className="side-item-count">{f.count}</span>
-              </button>
-            ))}
-          </div>
+        <SidebarSection
+          title="文件夹"
+          action={
+            <button
+              type="button"
+              className="side-tree-toggle"
+              aria-label={foldersCollapsed ? "展开文件夹" : "折叠文件夹"}
+              aria-expanded={!foldersCollapsed}
+              title={foldersCollapsed ? "展开文件夹" : "折叠文件夹"}
+              onClick={() => setFoldersCollapsed((collapsed) => !collapsed)}
+            >
+              <ChevronDownIcon size={14} />
+            </button>
+          }
+        >
+          {!foldersCollapsed && (
+            <div className="side-tree">
+              {visibleFolders.map((f) => {
+                const hasChildren = folders.some(
+                  (child) => child.depth > f.depth && child.path.startsWith(`${f.path}/`)
+                );
+                const isCollapsed = collapsedPaths.has(f.path);
+                return (
+                  <div
+                    key={f.path}
+                    className="side-folder-row"
+                    style={{ paddingLeft: 12 + f.depth * 14 }}
+                  >
+                    {hasChildren ? (
+                      <button
+                        type="button"
+                        className={`side-folder-toggle${isCollapsed ? " is-collapsed" : ""}`}
+                        aria-label={isCollapsed ? `展开${f.name}` : `折叠${f.name}`}
+                        aria-expanded={!isCollapsed}
+                        title={isCollapsed ? `展开${f.name}` : `折叠${f.name}`}
+                        onClick={() => {
+                          setCollapsedPaths((current) => {
+                            const next = new Set(current);
+                            if (next.has(f.path)) next.delete(f.path);
+                            else next.add(f.path);
+                            return next;
+                          });
+                        }}
+                      >
+                        <ChevronDownIcon size={13} />
+                      </button>
+                    ) : (
+                      <span className="side-folder-toggle-placeholder" aria-hidden="true" />
+                    )}
+                    <button
+                      className={`side-item side-folder${isNavActive({ kind: "folder", value: f.path }) ? " is-active" : ""}`}
+                      style={{ paddingLeft: 0 }}
+                      onClick={() => setNav({ kind: "folder", value: f.path })}
+                      title={f.path}
+                    >
+                      <span className="side-item-icon">
+                        <FolderIcon size={15} />
+                      </span>
+                      <span className="side-item-label">{f.name}</span>
+                      <span className="side-item-count">{f.count}</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </SidebarSection>
       )}
 

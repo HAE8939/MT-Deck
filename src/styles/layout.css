@@ -181,6 +181,70 @@ body {
   padding: 0 10px 8px;
 }
 
+.side-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.side-section-heading .side-section-title {
+  padding-bottom: 8px;
+}
+
+.side-tree-toggle,
+.side-folder-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+  color: var(--color-ink-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.side-tree-toggle {
+  width: 22px;
+  height: 22px;
+  margin: -3px 5px 5px 0;
+}
+
+.side-tree-toggle:hover,
+.side-folder-toggle:hover {
+  color: var(--color-ink);
+}
+
+.side-tree-toggle svg,
+.side-folder-toggle svg {
+  transition: transform 140ms ease;
+}
+
+.side-tree-toggle[aria-expanded="false"] svg,
+.side-folder-toggle.is-collapsed svg {
+  transform: rotate(-90deg);
+}
+
+.side-folder-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.side-folder-row > .side-item {
+  min-width: 0;
+}
+
+.side-folder-toggle,
+.side-folder-toggle-placeholder {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.side-folder-toggle {
+  margin-right: 1px;
+}
+
 .side-tree {
   display: flex;
   flex-direction: column;

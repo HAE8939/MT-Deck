@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import { api, fileToPrompt, isIgnoredRelativePath, toAbsolutePath, toRelativePath, findUniquePromptPath } from "../services/promptService";
 import { buildPrompt, sanitizeFilename, serializePromptMarkdown } from "../services/promptParser";
 import { searchService } from "../services/searchService";
+import { finishNewPromptSave } from "./editorTransitions";
 import type { AppSettings, Prompt, RecentEntry, ThemeMode } from "../types/prompt";
 
 export type Nav =
@@ -416,9 +417,14 @@ export async function saveEditor(): Promise<"saved" | "conflict" | "invalid"> {
     const { absolutePath } = await findUniquePromptPath(root, folder, sanitizeFilename(title));
     const id = crypto.randomUUID();
     await api.writeFile(absolutePath, buildMarkdown(id));
-    await upsertFromDisk(root, absolutePath);
-    const saved = state.promptByKey[`id:${id}`];
-    set({ editor: null, selectedKey: saved ? saved.key : null, nav: { kind: "all" }, searchQuery: "" });
+    await finishNewPromptSave({
+      closeEditor: () => set({ editor: null }),
+      refreshPrompt: async () => {
+        await upsertFromDisk(root, absolutePath);
+        return state.promptByKey[`id:${id}`]?.key ?? null;
+      },
+      selectPrompt: (key) => set({ selectedKey: key, nav: { kind: "all" }, searchQuery: "" }),
+    });
     showToast("提示词已创建");
     return "saved";
   }

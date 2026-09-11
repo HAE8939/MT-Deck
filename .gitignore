@@ -30,3 +30,6 @@ desktop.ini
 .env
 .env.*
 !.env.example
+
+# Local one-off scripts with machine-specific paths
+organize_prompts.py

@@ -2,6 +2,7 @@ use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
+use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 use walkdir::WalkDir;
 
@@ -198,11 +199,15 @@ pub async fn select_folder(app: tauri::AppHandle) -> Result<Option<String>, Stri
 }
 
 #[tauri::command]
-pub fn load_library(root: String) -> Result<Vec<LibFile>, String> {
+pub fn load_library(app: tauri::AppHandle, root: String) -> Result<Vec<LibFile>, String> {
     let root_path = PathBuf::from(&root);
     if !root_path.is_dir() {
         return Err("The selected prompt folder does not exist.".into());
     }
+    // Prompt reference images live under the library's scr/ folder. Allow only
+    // that folder in the asset protocol so the webview cannot read arbitrary
+    // files elsewhere on disk. Best-effort: a scope error must not block loading.
+    let _ = app.asset_protocol_scope().allow_directory(root_path.join("scr"), true);
     let mut files: Vec<LibFile> = Vec::new();
     for entry in WalkDir::new(&root_path)
         .follow_links(false)
@@ -300,7 +305,7 @@ pub fn create_library(parent: String) -> Result<String, String> {
         fs::create_dir_all(root.join(dir))
             .map_err(|e| format!("Unable to create folder: {e}"))?;
     }
-    fs::write(root.join("_Prompt Template新方案.md"), PROMPT_TEMPLATE)
+    fs::write(root.join("_Prompt Template.md"), PROMPT_TEMPLATE)
         .map_err(|e| format!("Unable to write template: {e}"))?;
     Ok(root.to_string_lossy().to_string())
 }
@@ -338,7 +343,7 @@ pub fn seed_samples(root: String) -> Result<usize, String> {
         return Ok(0);
     }
 
-    let template = root_path.join("_Prompt Template新方案.md");
+    let template = root_path.join("_Prompt Template.md");
     if !template.exists() {
         fs::write(&template, PROMPT_TEMPLATE).map_err(|e| format!("无法写入模板：{e}"))?;
     }

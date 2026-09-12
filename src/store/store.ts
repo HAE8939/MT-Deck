@@ -402,6 +402,7 @@ export async function saveEditor(): Promise<"saved" | "conflict" | "invalid"> {
       model: editor.model.trim() || undefined,
       tags,
       description: editor.description.trim() || undefined,
+      image: editor.isNew ? undefined : state.promptByKey[editor.promptKey!]?.image,
       promptContent: editor.promptContent,
       notes: editor.notes.trim() || undefined,
       extra: editor.isNew ? [] : (state.promptByKey[editor.promptKey!]?.extraFrontmatter ?? []),
@@ -447,8 +448,8 @@ export async function saveEditor(): Promise<"saved" | "conflict" | "invalid"> {
               ? (state.promptByKey[editor.promptKey!]?.id ?? crypto.randomUUID())
               : crypto.randomUUID();
           await api.writeFile(filePath, buildMarkdown(id));
-          await upsertFromDisk(root, filePath);
           set({ editor: null, conflict: null });
+          await upsertFromDisk(root, filePath);
           showToast("提示词已保存");
         },
         reloadIntoEditor: async () => {
@@ -485,8 +486,10 @@ export async function saveEditor(): Promise<"saved" | "conflict" | "invalid"> {
     ? (state.promptByKey[editor.promptKey!]?.id ?? crypto.randomUUID())
     : crypto.randomUUID();
   await api.writeFile(filePath, buildMarkdown(id));
-  await upsertFromDisk(root, filePath);
+  // Close immediately after the write succeeds. Refreshing the library may
+  // trigger filesystem events and must not keep the editor modal mounted.
   set({ editor: null });
+  await upsertFromDisk(root, filePath);
   showToast("提示词已保存");
   return "saved";
 }

@@ -33,9 +33,13 @@ export function PromptEditor() {
     ? `${sanitizeFilename(editor.title || "未命名")}.md`
     : (app.promptByKey[editor.promptKey ?? ""]?.fileName ?? "");
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    void saveEditor();
+    const result = await saveEditor();
+    // Keep the editor lifecycle explicit at the UI boundary. saveEditor also
+    // clears the store after a successful write, while this handles any
+    // successful save path that may be added later.
+    if (result === "saved") requestCloseEditor();
   };
 
   return (

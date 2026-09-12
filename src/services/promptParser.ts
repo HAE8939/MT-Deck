@@ -11,12 +11,13 @@ export interface ParsedMarkdown {
   model?: string;
   tags: string[];
   description?: string;
+  image?: string;
   extra: Array<[string, string | string[]]>;
   promptContent: string;
   notes?: string;
 }
 
-const KNOWN_KEYS = new Set(["id", "title", "model", "tags", "description"]);
+const KNOWN_KEYS = new Set(["id", "title", "model", "tags", "description", "image"]);
 
 function stripQuotes(value: string): string {
   if (
@@ -130,6 +131,7 @@ export function parsePromptMarkdown(raw: string): ParsedMarkdown {
     model: asString(meta.model),
     tags,
     description: asString(meta.description),
+    image: asString(meta.image),
     extra,
     promptContent,
     notes,
@@ -149,6 +151,7 @@ export interface SerializedPrompt {
   model?: string;
   tags: string[];
   description?: string;
+  image?: string;
   promptContent: string;
   notes?: string;
   extra: Array<[string, string | string[]]>;
@@ -166,6 +169,7 @@ export function serializePromptMarkdown(input: SerializedPrompt): string {
   if (input.description) {
     lines.push("", `description: ${yamlScalar(input.description)}`);
   }
+  if (input.image) lines.push("", `image: ${yamlScalar(input.image)}`);
   for (const [key, value] of input.extra) {
     if (Array.isArray(value)) {
       lines.push("", `${key}:`);
@@ -214,6 +218,7 @@ export function buildPrompt(
     model: parsed.model,
     tags: parsed.tags,
     description: parsed.description,
+    image: parsed.image,
     promptContent: parsed.promptContent,
     notes: parsed.notes,
     extraFrontmatter: parsed.extra,

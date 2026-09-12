@@ -18,6 +18,8 @@ tags:
   - 标签2
 
 description: 一句话说明这条提示词做什么。
+
+image:
 ---
 
 # Prompt
@@ -294,11 +296,11 @@ pub fn create_library(parent: String) -> Result<String, String> {
     if root.exists() {
         return Err("MT-Prompts folder already exists in this location.".into());
     }
-    for dir in ["Image", "Video", "Analysis", "System", "Writing"] {
+    for dir in ["Image", "Video", "Analysis", "System", "Writing", "scr"] {
         fs::create_dir_all(root.join(dir))
             .map_err(|e| format!("Unable to create folder: {e}"))?;
     }
-    fs::write(root.join("_Prompt Template.md"), PROMPT_TEMPLATE)
+    fs::write(root.join("_Prompt Template新方案.md"), PROMPT_TEMPLATE)
         .map_err(|e| format!("Unable to write template: {e}"))?;
     Ok(root.to_string_lossy().to_string())
 }
@@ -336,10 +338,11 @@ pub fn seed_samples(root: String) -> Result<usize, String> {
         return Ok(0);
     }
 
-    let template = root_path.join("_Prompt Template.md");
+    let template = root_path.join("_Prompt Template新方案.md");
     if !template.exists() {
         fs::write(&template, PROMPT_TEMPLATE).map_err(|e| format!("无法写入模板：{e}"))?;
     }
+    fs::create_dir_all(root_path.join("scr")).map_err(|e| format!("无法创建图片目录：{e}"))?;
 
     let mut written = 0usize;
     for card in SAMPLE_CARDS {

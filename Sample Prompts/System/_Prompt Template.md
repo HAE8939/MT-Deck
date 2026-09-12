@@ -1,21 +1,17 @@
 ---
-id: 6e2b4d8f-1a93-47c5-a0f1-8d3c5e7b9a44
-
-title: Prompt Title
-
+id: 00000000-0000-0000-0000-000000000000
+title: 提示词标题
 model:
-
 tags:
-  - Tag 1
-  - Tag 2
-
-description: A short description explaining what this prompt does.
+  - 标签1
+description: 一句话说明这条提示词做什么。
+image:
 ---
 
 # Prompt
 
-Write the actual prompt content here.
+在此填写提示词正文。
 
 # Notes
 
-Optional notes, usage instructions, or limitations.
+可选的使用说明、注意事项或局限。

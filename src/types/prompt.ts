@@ -16,6 +16,7 @@ export interface Prompt {
   model?: string;
   tags: string[];
   description?: string;
+  image?: string;
   promptContent: string;
   notes?: string;
   /** Unknown frontmatter keys preserved on rewrite (no silent data loss). */

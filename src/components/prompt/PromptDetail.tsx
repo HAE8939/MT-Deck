@@ -1,6 +1,7 @@
 import { useApp, selectPrompt, copyPrompt, openEditor, requestDelete, requestRename, revealFile, toggleFavorite } from "../../store/store";
 import { XIcon, CopyIcon, EditIcon, TrashIcon, ExternalLinkIcon, StarIcon, EditIcon as RenameIcon } from "../common/icons";
 import type { Prompt } from "../../types/prompt";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 function formatDateTime(ms: number): string {
   if (!ms) return "";
@@ -74,6 +75,13 @@ export function PromptDetail({ prompt }: { prompt: Prompt }) {
       )}
 
       {prompt.description && <p className="detail-description">{prompt.description}</p>}
+      {prompt.image && app.libraryRoot && (() => {
+        const imageRef = prompt.image.replace(/\\/g, "/");
+        const imagePath = /^[A-Za-z]:\//.test(imageRef) || imageRef.startsWith("/")
+          ? imageRef
+          : `${app.libraryRoot.replace(/\\/g, "/")}/${imageRef.startsWith("scr/") ? imageRef : `scr/${imageRef}`}`;
+        return <img className="detail-image" src={convertFileSrc(imagePath)} alt="" />;
+      })()}
 
       <div className="detail-body">
         <div className="detail-section-label">提示词</div>

@@ -204,10 +204,12 @@ pub fn load_library(app: tauri::AppHandle, root: String) -> Result<Vec<LibFile>,
     if !root_path.is_dir() {
         return Err("The selected prompt folder does not exist.".into());
     }
-    // Prompt reference images live under the library's scr/ folder. Allow only
-    // that folder in the asset protocol so the webview cannot read arbitrary
-    // files elsewhere on disk. Best-effort: a scope error must not block loading.
-    let _ = app.asset_protocol_scope().allow_directory(root_path.join("scr"), true);
+    // Reference images are resolved inside the chosen library (the UI keeps them
+    // under <root>/scr). Grant the webview read access to the library root only —
+    // not the whole disk — so a crafted `image:` path can no longer exfiltrate
+    // arbitrary files, while images anywhere under the library still render.
+    // Best-effort: a scope error must never block loading the library.
+    let _ = app.asset_protocol_scope().allow_directory(root_path.clone(), true);
     let mut files: Vec<LibFile> = Vec::new();
     for entry in WalkDir::new(&root_path)
         .follow_links(false)

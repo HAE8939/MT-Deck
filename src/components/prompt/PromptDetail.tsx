@@ -79,7 +79,7 @@ export function PromptDetail({ prompt }: { prompt: Prompt }) {
         const imageRef = prompt.image.replace(/\\/g, "/");
         const imagePath = /^[A-Za-z]:\//.test(imageRef) || imageRef.startsWith("/")
           ? imageRef
-          : `${app.libraryRoot.replace(/\\/g, "/")}/${imageRef.startsWith("scr/") ? imageRef : `scr/${imageRef}`}`;
+          : `${app.libraryRoot.replace(/\\/g, "/")}/${imageRef.startsWith("src/") ? imageRef : `src/${imageRef}`}`;
         return <img className="detail-image" src={convertFileSrc(imagePath)} alt="" />;
       })()}
 

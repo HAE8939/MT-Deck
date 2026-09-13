@@ -34,14 +34,14 @@ image: example.png
 可选说明。
 ```
 
-`image` 是可选字段。图片统一放在提示词库根目录的 `scr/` 文件夹中，填写相对于提示词库的路径，例如 `example.png` 或 `scr/example.png`。不使用图片时保持为空即可。
+`image` 是可选字段。图片统一放在提示词库根目录的 `src/` 文件夹中，填写相对于提示词库的路径，例如 `example.png` 或 `src/example.png`。不使用图片时保持为空即可。
 
 ## 提示词库结构
 
 ```text
 MT-Prompts/
 ├─ Image/   ├─ Video/   ├─ Analysis/   ├─ System/   ├─ Writing/
-├─ scr/                     # 关联图片
+├─ src/                     # 关联图片
 └─ _Prompt Template.md      # 模板，不作为提示词卡片
 ```
 
@@ -52,7 +52,7 @@ MT-Prompts/
 - 文件夹分类、全文搜索、收藏和最近使用
 - 新建、编辑、重命名、复制和回收站删除
 - 外部修改检测、原子写入和未保存更改保护
-- 关联并显示提示词库 `scr/` 中的本地图片
+- 关联并显示提示词库 `src/` 中的本地图片
 - 浅色、深色和跟随系统主题
 
 ## 快捷键

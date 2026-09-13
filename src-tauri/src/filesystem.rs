@@ -205,7 +205,7 @@ pub fn load_library(app: tauri::AppHandle, root: String) -> Result<Vec<LibFile>,
         return Err("The selected prompt folder does not exist.".into());
     }
     // Reference images are resolved inside the chosen library (the UI keeps them
-    // under <root>/scr). Grant the webview read access to the library root only —
+    // under <root>/src). Grant the webview read access to the library root only —
     // not the whole disk — so a crafted `image:` path can no longer exfiltrate
     // arbitrary files, while images anywhere under the library still render.
     // Best-effort: a scope error must never block loading the library.
@@ -303,7 +303,7 @@ pub fn create_library(parent: String) -> Result<String, String> {
     if root.exists() {
         return Err("MT-Prompts folder already exists in this location.".into());
     }
-    for dir in ["Image", "Video", "Analysis", "System", "Writing", "scr"] {
+    for dir in ["Image", "Video", "Analysis", "System", "Writing", "src"] {
         fs::create_dir_all(root.join(dir))
             .map_err(|e| format!("Unable to create folder: {e}"))?;
     }
@@ -349,7 +349,7 @@ pub fn seed_samples(root: String) -> Result<usize, String> {
     if !template.exists() {
         fs::write(&template, PROMPT_TEMPLATE).map_err(|e| format!("无法写入模板：{e}"))?;
     }
-    fs::create_dir_all(root_path.join("scr")).map_err(|e| format!("无法创建图片目录：{e}"))?;
+    fs::create_dir_all(root_path.join("src")).map_err(|e| format!("无法创建图片目录：{e}"))?;
 
     let mut written = 0usize;
     for card in SAMPLE_CARDS {

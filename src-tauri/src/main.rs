@@ -49,7 +49,12 @@ fn main() {
             let show = MenuItemBuilder::with_id("show", "显示 MT-Deck").build(app)?;
             let quit = MenuItemBuilder::with_id("quit", "退出").build(app)?;
             let menu = MenuBuilder::new(app).items(&[&show, &quit]).build()?;
+            let tray_icon = app
+                .default_window_icon()
+                .cloned()
+                .expect("bundled window icon is missing");
             TrayIconBuilder::with_id("main-tray")
+                .icon(tray_icon)
                 .menu(&menu)
                 .tooltip("MT-Deck")
                 .on_menu_event(|app, event| match event.id().as_ref() {

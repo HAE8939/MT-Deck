@@ -1,6 +1,6 @@
 [package]
 name = "mt-deck"
-version = "2.0.0"
+version = "2.0.1"
 description = "A beautiful, local-first AI prompt deck"
 authors = ["HAE"]
 edition = "2021"

@@ -1,7 +1,9 @@
-import { useApp, selectPrompt, copyPrompt, openEditor, requestDelete, requestRename, revealFile, toggleFavorite } from "../../store/store";
-import { XIcon, CopyIcon, EditIcon, TrashIcon, ExternalLinkIcon, StarIcon, EditIcon as RenameIcon } from "../common/icons";
+import { useState } from "react";
+import { useApp, selectPrompt, copyPrompt, duplicatePrompt, openEditor, requestDelete, requestRename, revealFile, toggleFavorite } from "../../store/store";
+import { XIcon, CopyIcon, EditIcon, TrashIcon, ExternalLinkIcon, StarIcon, EditIcon as RenameIcon, LayersIcon } from "../common/icons";
 import type { Prompt } from "../../types/prompt";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { resolvePromptImagePath } from "../../services/imageAssets";
 
 function formatDateTime(ms: number): string {
   if (!ms) return "";
@@ -12,6 +14,8 @@ function formatDateTime(ms: number): string {
 export function PromptDetail({ prompt }: { prompt: Prompt }) {
   const app = useApp();
   const isFavorite = prompt.id !== null && app.favorites.includes(prompt.id);
+  const [imageFailed, setImageFailed] = useState(false);
+  const imagePath = app.libraryRoot ? resolvePromptImagePath(app.libraryRoot, prompt.image) : null;
 
   return (
     <aside className="detail-panel" aria-label="提示词详情">
@@ -50,6 +54,10 @@ export function PromptDetail({ prompt }: { prompt: Prompt }) {
           <EditIcon size={15} />
           编辑
         </button>
+        <button className="btn btn-ghost" onClick={() => void duplicatePrompt(prompt)} title="创建一个新的 Markdown 副本">
+          <LayersIcon size={15} />
+          复制副本
+        </button>
         <div className="detail-actions-secondary">
           <button className="icon-btn" title="在文件夹中显示" aria-label="在文件夹中显示" onClick={() => void revealFile(prompt)}>
             <ExternalLinkIcon size={15} />
@@ -63,35 +71,39 @@ export function PromptDetail({ prompt }: { prompt: Prompt }) {
         </div>
       </div>
 
-      {(prompt.model || prompt.tags.length > 0) && (
-        <div className="detail-tags">
-          {prompt.model && <span className="card-model">{prompt.model}</span>}
-          {prompt.tags.map((tag) => (
-            <span key={tag} className="tag">
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {prompt.description && <p className="detail-description">{prompt.description}</p>}
-      {prompt.image && app.libraryRoot && (() => {
-        const imageRef = prompt.image.replace(/\\/g, "/");
-        const imagePath = /^[A-Za-z]:\//.test(imageRef) || imageRef.startsWith("/")
-          ? imageRef
-          : `${app.libraryRoot.replace(/\\/g, "/")}/${imageRef.startsWith("src/") ? imageRef : `src/${imageRef}`}`;
-        return <img className="detail-image" src={convertFileSrc(imagePath)} alt="" />;
-      })()}
-
-      <div className="detail-body">
-        <div className="detail-section-label">提示词</div>
-        <div className="detail-prompt">{prompt.promptContent}</div>
-        {prompt.notes && (
-          <>
-            <div className="detail-section-label">备注</div>
-            <div className="detail-notes">{prompt.notes}</div>
-          </>
+      <div className="detail-scroll">
+        {(prompt.model || prompt.tags.length > 0) && (
+          <div className="detail-tags">
+            {prompt.model && <span className="card-model">{prompt.model}</span>}
+            {prompt.tags.map((tag) => (
+              <span key={tag} className="tag">
+                {tag}
+              </span>
+            ))}
+          </div>
         )}
+
+        {prompt.description && <p className="detail-description">{prompt.description}</p>}
+        <div className={`detail-media${imageFailed ? " is-error" : ""}`}>
+          {imagePath && !imageFailed ? (
+            <img className="detail-image" src={convertFileSrc(imagePath)} alt={`${prompt.title} 关联图片`} onError={() => setImageFailed(true)} />
+          ) : (
+            <div className="detail-media-placeholder">
+              <span>{imageFailed ? "图片不可用" : "暂无关联图片"}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="detail-body">
+          <div className="detail-section-label">提示词</div>
+          <div className="detail-prompt">{prompt.promptContent}</div>
+          {prompt.notes && (
+            <>
+              <div className="detail-section-label">备注</div>
+              <div className="detail-notes">{prompt.notes}</div>
+            </>
+          )}
+        </div>
       </div>
       <div className="detail-file-hint">{prompt.fileName}</div>
     </aside>

@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from "react";
 import { useApp, setNav, setTheme, changeLibrary, type Nav } from "../../store/store";
 import { deriveFolders, deriveModels, deriveTags } from "../../store/store";
-import { FolderIcon, StarIcon, ClockIcon, SunIcon, MoonIcon, MonitorIcon, ChevronDownIcon } from "../common/icons";
+import { FolderIcon, StarIcon, ClockIcon, SunIcon, MoonIcon, MonitorIcon, ChevronDownIcon, InfoIcon } from "../common/icons";
 import { Logo } from "../common/Logo";
+import { api } from "../../services/promptService";
 import type { ThemeMode } from "../../types/prompt";
 import { getVisibleFolders } from "./folderTree";
 
@@ -51,6 +52,8 @@ function SidebarSection({
 export function Sidebar() {
   const app = useApp();
   const [foldersCollapsed, setFoldersCollapsed] = useState(false);
+  const [tagsCollapsed, setTagsCollapsed] = useState(false);
+  const [modelsCollapsed, setModelsCollapsed] = useState(false);
   const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(() => new Set());
   const prompts = app.prompts;
   const folders = deriveFolders(prompts);
@@ -180,8 +183,22 @@ export function Sidebar() {
       )}
 
       {tags.length > 0 && (
-        <SidebarSection title="标签">
-          <div className="side-chips">
+        <SidebarSection
+          title="标签"
+          action={
+            <button
+              type="button"
+              className="side-tree-toggle"
+              aria-label={tagsCollapsed ? "展开标签" : "折叠标签"}
+              aria-expanded={!tagsCollapsed}
+              title={tagsCollapsed ? "展开标签" : "折叠标签"}
+              onClick={() => setTagsCollapsed((collapsed) => !collapsed)}
+            >
+              <ChevronDownIcon size={14} />
+            </button>
+          }
+        >
+          {!tagsCollapsed && <div className="side-chips">
             {tags.slice(0, 24).map((t) => (
               <button
                 key={t.tag}
@@ -192,13 +209,27 @@ export function Sidebar() {
                 <span className="chip-count">{t.count}</span>
               </button>
             ))}
-          </div>
+          </div>}
         </SidebarSection>
       )}
 
       {models.length > 0 && (
-        <SidebarSection title="模型">
-          <div className="side-chips">
+        <SidebarSection
+          title="模型"
+          action={
+            <button
+              type="button"
+              className="side-tree-toggle"
+              aria-label={modelsCollapsed ? "展开模型" : "折叠模型"}
+              aria-expanded={!modelsCollapsed}
+              title={modelsCollapsed ? "展开模型" : "折叠模型"}
+              onClick={() => setModelsCollapsed((collapsed) => !collapsed)}
+            >
+              <ChevronDownIcon size={14} />
+            </button>
+          }
+        >
+          {!modelsCollapsed && <div className="side-chips">
             {models.slice(0, 16).map((m) => (
               <button
                 key={m.model}
@@ -209,12 +240,22 @@ export function Sidebar() {
                 <span className="chip-count">{m.count}</span>
               </button>
             ))}
-          </div>
+          </div>}
         </SidebarSection>
       )}
 
       <div className="side-footer">
-        <div className="theme-toggle" role="group" aria-label="主题">
+        <div className="theme-toggle" role="group" aria-label="外观与仓库">
+          <button
+            type="button"
+            className="theme-toggle-btn"
+            title="打开 GitHub 仓库"
+            aria-label="打开 GitHub 仓库"
+            onClick={() => void api.openExternalUrl("https://github.com/HAE8939/MT-Deck")}
+          >
+            <InfoIcon size={14} />
+          </button>
+          <span className="theme-divider" aria-hidden="true" />
           {(
             [
               ["light", <SunIcon key="l" size={14} />],

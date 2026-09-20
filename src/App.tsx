@@ -17,6 +17,12 @@ export default function App() {
   useShortcuts();
   useAppCloseGuard();
 
+  useEffect(() => {
+    const preventContextMenu = (event: MouseEvent) => event.preventDefault();
+    document.addEventListener("contextmenu", preventContextMenu);
+    return () => document.removeEventListener("contextmenu", preventContextMenu);
+  }, []);
+
   return (
     <div className="window">
       <TitleBar />
@@ -24,9 +30,12 @@ export default function App() {
         {!app.ready ? (
           <div className="boot" aria-hidden="true" />
         ) : !app.libraryRoot ? (
-          <FirstLaunch />
+          <FirstLaunch mode="setup" />
         ) : (
-          <AppShell />
+          <>
+            <AppShell />
+            {!app.onboardingCompleted && <FirstLaunch mode="onboarding" />}
+          </>
         )}
       </div>
     </div>

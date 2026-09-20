@@ -39,4 +39,5 @@ export interface AppSettings {
   theme: ThemeMode;
   favorites: string[];
   recent: RecentEntry[];
+  onboardingCompleted: boolean;
 }

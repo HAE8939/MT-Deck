@@ -139,3 +139,11 @@ export const LayersIcon = createIcon(
 );
 
 export const CheckIcon = createIcon(<path d="M20 6 9 17l-5-5" />);
+
+export const InfoIcon = createIcon(
+  <>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 11v5" />
+    <path d="M12 8h.01" />
+  </>
+);

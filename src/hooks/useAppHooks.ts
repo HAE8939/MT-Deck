@@ -19,7 +19,7 @@ export function useFileWatcher(): void {
 export function useAppCloseGuard(): void {
   useEffect(() => {
     const un = listen("app-close-requested", () => {
-      void requestCloseApp(() => void getCurrentWindow().destroy());
+      void requestCloseApp(() => void getCurrentWindow().hide());
     });
     return () => {
       void un.then((f) => f());

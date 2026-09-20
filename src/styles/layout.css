@@ -343,6 +343,70 @@ body {
   border-top: 1px solid var(--color-hairline);
 }
 
+.onboarding {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  background: var(--color-ground);
+}
+
+.onboarding-stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  align-items: center;
+}
+.onboarding-skip { position: absolute; top: 20px; right: 24px; z-index: 1; border: 0; background: transparent; color: var(--color-ink-muted); cursor: pointer; }
+.onboarding-art {
+  justify-self: start;
+  display: grid;
+  place-items: center;
+  margin-left: clamp(24px, 5vw, 72px);
+  width: min(42vw, 520px);
+  height: auto;
+  padding: 28px 32px;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-surface);
+}
+.onboarding-copy { padding: 0 56px 0 20px; }
+.onboarding-copy h1 { max-width: 520px; margin: 0 0 14px; font-family: var(--font-serif); font-size: clamp(28px, 4vw, 54px); font-weight: 500; line-height: 1.35; animation: ob-rise 420ms 60ms ease-out both; }
+.onboarding-copy h1 span { white-space: nowrap; display: inline-block; }
+.onboarding-copy p { max-width: 420px; margin: 0; color: var(--color-ink-muted); font-size: 16px; line-height: 26px; animation: ob-rise 420ms 180ms ease-out both; }
+.onboarding-footer { position: relative; display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding: 18px 56px 28px 20px; }
+.onboarding-indicator { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+.onboarding-indicator button { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%; background: var(--color-hairline); cursor: pointer; transition: background var(--motion-fast), transform var(--motion-fast); }
+.onboarding-indicator button:hover { transform: scale(1.25); }
+.onboarding-indicator button.is-active { background: var(--color-accent-brass); }
+
+/* Onboarding line-art system */
+.ob-enter { animation: ob-slide-in 280ms ease-out both; }
+.onboarding-art .ob-enter { width: 100%; height: 100%; display: grid; place-items: center; }
+.ob-svg { width: 100%; height: auto; display: block; }
+.ob-b { stroke: var(--color-accent-brass); }
+.ob-g { stroke: var(--color-accent-green); }
+.ob-k { stroke: var(--color-ink-muted); }
+.ob-b, .ob-g, .ob-k { fill: none; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+.ob-t { font-family: var(--font-serif); font-size: 15px; letter-spacing: 0.04em; fill: var(--color-ink-muted); }
+.ob-d { stroke-dasharray: 1; stroke-dashoffset: 1; animation: ob-draw 650ms ease-out forwards; animation-delay: var(--d, 0ms); }
+.ob-f { opacity: 0; animation: ob-fade 500ms ease-out forwards; animation-delay: var(--d, 0ms); }
+
+@keyframes ob-draw { to { stroke-dashoffset: 0; } }
+@keyframes ob-fade { to { opacity: 1; } }
+@keyframes ob-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes ob-slide-in { from { opacity: 0; transform: translateX(calc(26px * var(--dir, 1))); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 900px) {
+  .onboarding-stage { grid-template-columns: 1fr; align-content: center; justify-items: center; gap: 8px; overflow-y: auto; }
+  .onboarding-art { justify-self: center; margin: 20px auto 0; width: min(80vw, 460px); }
+  .onboarding-copy { padding: 28px 24px 16px; }
+  .onboarding-copy h1 { font-size: 34px; }
+  .onboarding-footer { padding: 16px 24px 24px; }
+}
+
 .theme-toggle {
   display: inline-flex;
   gap: 2px;
@@ -372,6 +436,15 @@ body {
 .theme-toggle-btn.is-active {
   background: var(--color-accent-brass-soft);
   color: var(--color-accent-brass);
+}
+
+.theme-divider {
+  width: 1px;
+  align-self: center;
+  height: 16px;
+  margin: 0 3px;
+  background: var(--color-hairline);
+  flex: none;
 }
 
 /* ---------------- Main area ---------------- */
@@ -605,15 +678,31 @@ body {
 .detail-image {
   display: block;
   width: 100%;
+  height: 100%;
   max-height: 320px;
   object-fit: contain;
-  margin: 0 0 18px;
-  background: var(--surface-muted);
+  background: var(--color-ground);
+}
+
+.detail-media {
+  aspect-ratio: 4 / 3;
+  margin: 14px 24px 0;
+  overflow: hidden;
+  background: var(--color-ground);
+}
+
+.detail-media-placeholder {
+  min-height: 180px;
+}
+
+.detail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .detail-body {
-  flex: 1;
-  overflow-y: auto;
   padding: 4px 24px 20px;
 }
 

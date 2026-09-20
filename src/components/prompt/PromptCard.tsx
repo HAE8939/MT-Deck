@@ -1,6 +1,9 @@
+import { useState } from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { useApp, selectPrompt, toggleFavorite } from "../../store/store";
 import { StarIcon } from "../common/icons";
 import type { Prompt } from "../../types/prompt";
+import { resolvePromptImagePath } from "../../services/imageAssets";
 
 export function PromptCard({
   prompt,
@@ -15,6 +18,8 @@ export function PromptCard({
 }) {
   const app = useApp();
   const isFavorite = prompt.id !== null && app.favorites.includes(prompt.id);
+  const [imageFailed, setImageFailed] = useState(false);
+  const imagePath = app.libraryRoot ? resolvePromptImagePath(app.libraryRoot, prompt.image) : null;
 
   return (
     <article
@@ -31,6 +36,15 @@ export function PromptCard({
         }
       }}
     >
+      <div className={`card-media${imageFailed ? " is-error" : ""}`} aria-label={imagePath && !imageFailed ? "关联图片" : "暂无可用图片"}>
+        {imagePath && !imageFailed ? (
+          <img src={convertFileSrc(imagePath)} alt="" onError={() => setImageFailed(true)} />
+        ) : (
+          <div className="card-media-placeholder">
+            <span>{imageFailed ? "图片不可用" : "Prompt Asset"}</span>
+          </div>
+        )}
+      </div>
       <div className="card-top">
         <h3 className="card-title">{prompt.title}</h3>
         <button
@@ -47,7 +61,6 @@ export function PromptCard({
         </button>
       </div>
       {prompt.description && <p className="card-desc">{prompt.description}</p>}
-      <p className="card-preview">{prompt.promptContent.slice(0, 160)}</p>
       <div className="card-meta">
         {prompt.tags.slice(0, 3).map((tag) => (
           <span key={tag} className="tag">

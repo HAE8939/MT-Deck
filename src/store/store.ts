@@ -4,6 +4,7 @@ import { buildPrompt, sanitizeFilename, serializePromptMarkdown } from "../servi
 import { searchService } from "../services/searchService";
 import { finishNewPromptSave } from "./editorTransitions";
 import type { AppSettings, Prompt, RecentEntry, ThemeMode } from "../types/prompt";
+import { hasCompletedOnboarding } from "../services/onboarding";
 
 export type Nav =
   | { kind: "all" }
@@ -56,6 +57,7 @@ interface AppState {
   favorites: string[];
   recent: RecentEntry[];
   theme: ThemeMode;
+  onboardingCompleted: boolean;
   searchQuery: string;
   nav: Nav;
   selectedKey: string | null;
@@ -76,6 +78,7 @@ const initialState: AppState = {
   favorites: [],
   recent: [],
   theme: "system",
+  onboardingCompleted: false,
   searchQuery: "",
   nav: { kind: "all" },
   selectedKey: null,
@@ -120,6 +123,7 @@ function persistSettings(): void {
       theme: state.theme,
       favorites: state.favorites,
       recent: state.recent,
+      onboardingCompleted: state.onboardingCompleted,
     };
     api.saveSettings(s).catch(() => undefined);
   }, 300);
@@ -210,6 +214,7 @@ export async function initApp(): Promise<void> {
     if (s && typeof s === "object") {
       set({
         theme: s.theme ?? "system",
+        onboardingCompleted: hasCompletedOnboarding(s),
         favorites: Array.isArray(s.favorites) ? s.favorites : [],
         recent: Array.isArray(s.recent) ? s.recent : [],
         libraryRoot: s.libraryRoot ?? null,
@@ -274,6 +279,35 @@ export async function copyPrompt(prompt: Prompt): Promise<void> {
     showToast("已复制提示词");
   } catch {
     showToast("无法访问剪贴板。");
+  }
+}
+
+export async function duplicatePrompt(prompt: Prompt): Promise<void> {
+  const root = state.libraryRoot;
+  if (!root) return;
+  try {
+    const folder = prompt.categoryPath.join("/");
+    const { absolutePath } = await findUniquePromptPath(root, folder, sanitizeFilename(`${prompt.title} 副本`));
+    const id = crypto.randomUUID();
+    const content = serializePromptMarkdown({
+      id,
+      title: `${prompt.title} 副本`,
+      model: prompt.model,
+      tags: prompt.tags,
+      description: prompt.description,
+      image: prompt.image,
+      promptContent: prompt.promptContent,
+      notes: prompt.notes,
+      extra: prompt.extraFrontmatter,
+    });
+    await api.writeFile(absolutePath, content);
+    await upsertFromDisk(root, absolutePath);
+    set({ selectedKey: `id:${id}`, nav: { kind: "all" }, searchQuery: "" });
+    showToast("提示词副本已创建");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "复制提示词失败";
+    console.error("Duplicate prompt failed:", err);
+    showToast(message);
   }
 }
 
@@ -586,6 +620,11 @@ export async function revealFile(prompt: Prompt): Promise<void> {
 
 export function setTheme(theme: ThemeMode): void {
   set({ theme });
+  persistSettings();
+}
+
+export function completeOnboarding(): void {
+  set({ onboardingCompleted: true });
   persistSettings();
 }
 

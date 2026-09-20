@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { buildPrompt } from "./promptParser";
 import type { Prompt } from "../types/prompt";
+export { isRemoteImageReference, resolvePromptImagePath } from "./imageAssets";
 
 export interface LibFile {
   path: string;
@@ -16,6 +17,7 @@ export interface ReadFileResult {
 }
 
 export const api = {
+  openExternalUrl: (url: string) => invoke<void>("open_external_url", { url }),
   selectFolder: () => invoke<string | null>("select_folder"),
   loadLibrary: (root: string) => invoke<LibFile[]>("load_library", { root }),
   readFile: (path: string) => invoke<ReadFileResult | null>("read_file", { path }),

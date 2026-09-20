@@ -10,11 +10,9 @@ MT-Deck 是一个漂亮、克制、完全属于用户自己的本地 AI 创作�
 
 Prompt、参考图、效果图、创作经验以及 Markdown 文件，全部保存在你的电脑上。没有账号，没有云端数据库，也没有把内容锁进平台的同步服务。
 
-```text
-Prompt       Reference Image       Creative Assets       Markdown
-     \              |                     |                 /
-                    MT-Deck
-```
+<p align="center">
+  <img src="docs/images/deck-concept.png" alt="MT-Deck 把 Prompt、参考图、标签与 Markdown 四类创作资产汇聚到一处" width="720" />
+</p>
 
 MT-Deck 是一个**本地优先、Markdown 优先、图片优先**的 AI 创作资产工具。提示词以独立 Markdown 文件保存，目录结构就是分类，图片使用本地路径关联。应用不上传、不接管、不锁定你的内容，文件随时可以用 VS Code、Typora、Notepad 或其他编辑器打开。
 

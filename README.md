@@ -1,7 +1,7 @@
 # MT-Deck
 
 <p align="center">
-  <a href="docs/landing/index.html">产品介绍页</a> · <a href="https://github.com/HAE8939/MT-Deck/releases/latest">下载</a> · <a href="https://github.com/HAE8939/MT-Deck">GitHub</a>
+  <a href="https://hae8939.github.io/MT-Deck/">产品介绍页</a> · <a href="https://github.com/HAE8939/MT-Deck/releases/latest">下载</a> · <a href="https://github.com/HAE8939/MT-Deck">GitHub</a>
 </p>
 
 > 你的本地内容，就是你的核心资产。

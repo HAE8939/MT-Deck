@@ -68,5 +68,5 @@
 - GitHub Release 双产物：`setup.exe` + `portable.exe`。
 - 版本号要同步改：`package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml`。
 - 草稿 Release 若与正式版共用同一 tag，用 `gh api` 按数字 ID 删除（按 tag 名删会连正式版一起干掉）。
-- 产品介绍落地页：`docs/landing/index.html`（单文件自包含、无构建、不引外部字体；**不能占用根 `index.html`**，否则破坏 App 构建）。配色用 HAE Creator Design System 原值（纸 `#F4F1EA` / accent `#B7472A` / ink `#2B2A26` / 气声 `#E7E1D6` / 暗色美术馆黑），与 App 内的暖米纸 + 黄铜**故意不同**——落地页跟设计系统真源，App 值后续反推对齐。界面展示用 CSS 画的示意，不放产品截图。
+- 产品介绍落地页：`docs/landing/index.html`，已发布到 **https://hae8939.github.io/MT-Deck/**（`.github/workflows/pages.yml` 用 Actions 只把 `docs/landing/` 发成站点根，内部文档不外泄；Pages 源已设为 GitHub Actions）。单文件自包含、无构建、不引外部字体；**不能占用根 `index.html`**，否则破坏 App 构建。配色用 HAE Creator Design System 原值（纸 `#F4F1EA` / accent `#B7472A` / ink `#2B2A26` / 气声 `#E7E1D6` / 暗色美术馆黑），与 App 内的暖米纸 + 黄铜**故意不同**——落地页跟设计系统真源，App 值后续反推对齐。界面展示用 CSS 画的示意，不放产品截图。
 - 旧的 `docs/images/screenshot.png` 已于 2026-09-30 删除（V2.0 之前的界面，与现状不符）。要放真截图必须先随 UI 重截。

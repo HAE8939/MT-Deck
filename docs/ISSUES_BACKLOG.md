@@ -153,7 +153,7 @@
   - **§02 不放产品截图**：`docs/images/screenshot.png` 是 V2.0 之前的界面（卡片带正文预览、无图片入口、无侧栏收起），拿它做宣传等于展示一个已不存在的界面 → 该文件已删除，README 顶部改成「产品介绍页 · 下载 · GitHub」文字链接，视觉主体交给 `deck-concept.png`。§02 改用 **CSS 画的三栏界面示意**（侧栏 / 卡片网格 / 详情面板）+ 组件语气面板 + 4:3 分享卡示意，与产品共用同一套 token，永不因改版而过时。
   - 配色真源冲突按已定方向处理：落地页跟 Design System 原值，App 内的暖米纸 `#efede6` / 黄铜 `#9c7a3c` 后续反推对齐（代价是两页并排有色差，已记进 AGENTS.md）。
   - 响应式：860px 以下折叠导航链接、单列化，并**隐藏示意图的侧栏与详情栏**（窄屏放不下三栏）；尊重 `prefers-reduced-motion`。
-  - **DEFERRED**：GitHub Pages 发布（`hae8939.github.io/MT-Deck/docs/landing/`）——README 里先用相对路径链接，本地可开；要对外发布需另做一步（仓库根 `index.html` 是 Vite 入口，Pages 若以根目录发布会把 App 入口当首页，得先定发布策略）。
+  - **GitHub Pages 已发布（2026-09-30）**：<https://hae8939.github.io/MT-Deck/>。踩点记录：Pages 的「从分支部署」只给 `/` 或 `/docs` 两个位置，选 `/docs` 会把 `ISSUES_BACKLOG.md` 与两份 spec 一起公开，选 `/` 则首页变成打不开的 Vite 入口 → 最终用 `.github/workflows/pages.yml`（Actions 源）只把 `docs/landing/` 发成站点根，源文件零复制。README 顶部链接已指向线上地址。
 
 ---
 

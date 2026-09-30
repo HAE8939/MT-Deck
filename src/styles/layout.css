@@ -27,6 +27,7 @@ body {
 }
 
 .app-shell {
+  position: relative;
   display: flex;
   height: 100%;
   overflow: hidden;
@@ -108,6 +109,45 @@ body {
   border-right: 1px solid var(--color-hairline);
   overflow-y: auto;
   overflow-x: hidden;
+  transition: width var(--motion-panel), visibility 0s;
+}
+
+/* ISSUE-005: collapsed sidebar keeps the hairline, drops its content and tab order. */
+.app-shell.is-sidebar-hidden .sidebar {
+  width: 0;
+  visibility: hidden;
+  transition: width var(--motion-panel), visibility 0s linear var(--motion-panel);
+}
+
+/* Bare icon riding the divider at the bottom (per HAE's 组1/组2 mockups):
+   expanded shows `‹` tucked at the sidebar's bottom-right, collapsed shows a
+   small `○` at the window's bottom-left. No plate, no border — hover only
+   darkens the glyph. */
+.sidebar-toggle {
+  position: absolute;
+  bottom: 14px;
+  left: calc(var(--sidebar-width) - 28px);
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: left var(--motion-panel), color var(--motion-fast);
+}
+
+.sidebar-toggle:hover {
+  color: var(--color-ink);
+}
+
+.app-shell.is-sidebar-hidden .sidebar-toggle {
+  left: 3px;
 }
 
 .side-brand {
@@ -650,6 +690,7 @@ body {
 .detail-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 16px 24px;
   border-bottom: 1px solid var(--color-hairline);
@@ -845,6 +886,65 @@ body {
 .field-hint {
   font-size: 12px;
   color: var(--color-ink-muted);
+}
+
+/* ---------------- Editor image field (ISSUE-003) ---------------- */
+
+.image-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.image-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.image-row .btn {
+  flex-shrink: 0;
+}
+
+.image-preview {
+  margin-top: 6px;
+  width: 132px;
+  height: 99px; /* 4:3, matching the card media ratio */
+  overflow: hidden;
+  background: var(--color-ground);
+  border: 1px solid var(--color-hairline);
+}
+
+.image-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-preview.is-error {
+  border-color: var(--color-danger);
+}
+
+.image-preview.is-error img {
+  display: none;
+}
+
+.image-preview.is-error::after {
+  content: "未找到该图片";
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--color-danger);
+  font-size: 12px;
+}
+
+.placeholder-hint {
+  max-width: 78%;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
 }
 
 .editor-footer {

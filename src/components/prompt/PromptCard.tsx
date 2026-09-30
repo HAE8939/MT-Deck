@@ -41,7 +41,7 @@ export function PromptCard({
           <img src={convertFileSrc(imagePath)} alt="" onError={() => setImageFailed(true)} />
         ) : (
           <div className="card-media-placeholder">
-            <span>{imageFailed ? "图片不可用" : "Prompt Asset"}</span>
+            <span>{imageFailed ? "图片未命中" : "Prompt Asset"}</span>
           </div>
         )}
       </div>

@@ -16,6 +16,11 @@ export interface ReadFileResult {
   modified_at: number;
 }
 
+export interface PickedImage {
+  absolute_path: string;
+  relative_reference: string;
+}
+
 export const api = {
   openExternalUrl: (url: string) => invoke<void>("open_external_url", { url }),
   selectFolder: () => invoke<string | null>("select_folder"),
@@ -23,6 +28,12 @@ export const api = {
   readFile: (path: string) => invoke<ReadFileResult | null>("read_file", { path }),
   writeFile: (path: string, content: string) => invoke<number>("write_prompt_file", { path, content }),
   renameFile: (from: string, to: string) => invoke<void>("rename_file", { from, to }),
+  pickImage: (root: string) => invoke<PickedImage | null>("pick_image", { root }),
+  saveImagePath: (defaultName: string) =>
+    invoke<string | null>("save_image_path", { defaultName: defaultName }),
+  writeImageBase64: (path: string, data: string) =>
+    invoke<void>("write_image_base64", { path, data }),
+  readImageBase64: (path: string) => invoke<string | null>("read_image_base64", { path }),
   createLibrary: (parent: string) => invoke<string>("create_library", { parent }),
   trashFile: (path: string) => invoke<void>("trash_file", { path }),
   revealFile: (path: string) => invoke<void>("reveal_file", { path }),

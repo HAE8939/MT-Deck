@@ -1,0 +1,36 @@
+name: Deploy landing page
+
+# 只发布 docs/landing/ 这一个目录作为 Pages 根，内部文档（ISSUES_BACKLOG、spec）留在仓库里不外泄。
+# 源文件保持单文件自包含，构建步骤只是把它原样拷进产物目录。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/landing/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/landing
+      - id: deployment
+        uses: actions/deploy-pages@v4

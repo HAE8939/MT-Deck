@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef } from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   useApp,
   updateEditor,
   saveEditor,
   requestCloseEditor,
+  pickEditorImage,
 } from "../../store/store";
 import { deriveFolders } from "../../store/store";
 import { sanitizeFilename } from "../../services/promptParser";
-import { XIcon } from "../common/icons";
+import { isRemoteImageReference, resolvePromptImagePath } from "../../services/imageAssets";
+import { XIcon, ImageIcon } from "../common/icons";
 
 /**
  * Structured prompt editor (spec §12). Ctrl+S saves; Esc asks before discarding.
@@ -32,6 +35,10 @@ export function PromptEditor() {
   const targetFileName = editor.isNew
     ? `${sanitizeFilename(editor.title || "未命名")}.md`
     : (app.promptByKey[editor.promptKey ?? ""]?.fileName ?? "");
+
+  const previewPath = app.libraryRoot
+    ? resolvePromptImagePath(app.libraryRoot, editor.image)
+    : null;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +132,57 @@ export function PromptEditor() {
               onChange={(e) => updateEditor({ description: e.target.value })}
               placeholder="这条提示词的用途"
             />
+          </div>
+
+          <div className="field">
+            <label htmlFor="f-image">图片</label>
+            <div className="image-row">
+              <input
+                id="f-image"
+                type="text"
+                value={editor.image}
+                onChange={(e) => updateEditor({ image: e.target.value })}
+                placeholder="src/example.png 或 http(s) 图片地址"
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => void pickEditorImage()}
+                title="选择一张本地图片，复制进资料库 src/"
+              >
+                <ImageIcon size={15} />
+                选择图片
+              </button>
+              {editor.image.trim() && (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="清除图片"
+                  title="清除图片"
+                  onClick={() => updateEditor({ image: "" })}
+                >
+                  <XIcon size={15} />
+                </button>
+              )}
+            </div>
+            {editor.image.trim() && !isRemoteImageReference(editor.image) ? (
+              <div className="image-preview">
+                <img
+                  src={convertFileSrc(previewPath!)}
+                  alt="图片预览"
+                  onError={(e) => {
+                    e.currentTarget.closest(".image-preview")?.classList.add("is-error");
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="field-hint">
+                {isRemoteImageReference(editor.image)
+                  ? "远程地址仅作记录，卡片不会联网加载图片。"
+                  : "选中的图片会复制进资料库 src/，随库迁移不丢图；也可直接填相对路径。"}
+              </div>
+            )}
           </div>
 
           <div className="field field-prompt">

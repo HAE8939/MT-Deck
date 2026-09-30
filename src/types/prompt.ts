@@ -40,4 +40,6 @@ export interface AppSettings {
   favorites: string[];
   recent: RecentEntry[];
   onboardingCompleted: boolean;
+  /** Manual sidebar preference (ISSUE-005). Persisted; detail auto-collapse never overrides it. */
+  sidebarVisible?: boolean;
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useApp, setSearchQuery, openEditor } from "../../store/store";
+import { useApp, setSearchQuery, openEditor, toggleSidebar } from "../../store/store";
 import { searchService } from "../../services/searchService";
 import { useDebounce } from "../../hooks/useDebounce";
 import { Sidebar } from "./Sidebar";
@@ -7,7 +7,7 @@ import { PromptGrid } from "../prompt/PromptGrid";
 import { PromptDetail } from "../prompt/PromptDetail";
 import { PromptEditor } from "../prompt/PromptEditor";
 import { Dialogs } from "../common/Dialogs";
-import { SearchIcon, PlusIcon } from "../common/icons";
+import { SearchIcon, PlusIcon, ChevronLeftIcon, CircleIcon } from "../common/icons";
 import type { Nav } from "../../store/store";
 
 function navLabel(nav: Nav): string {
@@ -71,10 +71,21 @@ export function AppShell() {
   }, [app.prompts, app.nav, debouncedSearchQuery, app.favorites, app.recent]);
 
   const selected = app.selectedKey ? (app.promptByKey[app.selectedKey] ?? null) : null;
+  const sidebarHidden = !(app.sidebarVisible && !app.sidebarAutoCollapsed);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${sidebarHidden ? " is-sidebar-hidden" : ""}`}>
       <Sidebar />
+      <button
+        type="button"
+        className="sidebar-toggle"
+        onClick={toggleSidebar}
+        title={sidebarHidden ? "显示侧栏 (Ctrl+B)" : "收起侧栏 (Ctrl+B)"}
+        aria-label={sidebarHidden ? "显示侧栏" : "收起侧栏"}
+        aria-expanded={!sidebarHidden}
+      >
+        {sidebarHidden ? <CircleIcon size={11} /> : <ChevronLeftIcon size={16} />}
+      </button>
       <main className="main-area">
         <header className="toolbar">
           <div className="toolbar-title">

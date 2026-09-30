@@ -140,6 +140,28 @@ export const LayersIcon = createIcon(
 
 export const CheckIcon = createIcon(<path d="M20 6 9 17l-5-5" />);
 
+export const ImageIcon = createIcon(
+  <>
+    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+    <circle cx="9" cy="9" r="2" />
+    <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
+  </>
+);
+
+export const ShareIcon = createIcon(
+  <>
+    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+    <polyline points="16 6 12 2 8 6" />
+    <path d="M12 2v13" />
+  </>
+);
+
+/** Sidebar toggle, expanded state: points at the direction it will collapse to. */
+export const ChevronLeftIcon = createIcon(<path d="m15 18-6-6 6-6" />);
+
+/** Sidebar toggle, collapsed state: a small round pull to bring the sidebar back. */
+export const CircleIcon = createIcon(<circle cx="12" cy="12" r="8" />);
+
 export const InfoIcon = createIcon(
   <>
     <circle cx="12" cy="12" r="9" />

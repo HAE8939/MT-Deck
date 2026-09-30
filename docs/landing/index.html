@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="MT-Deck — 本地优先的 AI Prompt 与图片资产库。提示词是 Markdown 文件，图片用本地路径关联，不上传、不接管、不锁定。">
+<title>MT-Deck · 产品介绍</title>
+<style>
+/* ============ Tokens · 取自 HAE Creator Design System V0.1 §2（唯一真源） ============ */
+:root{
+  --canvas:#F4F1EA; --surface:#FAF8F3; --sunken:#EDEAE2;
+  --ink:#2B2A26; --sec:#6E6A5E; --dis:#A8A294;
+  --accent:#B7472A; --accent-ink:#7A2E1A; --tint:#F3E3DB;
+  --border:#E7E1D6;
+  --r-out:10px; --r-in:6px;
+  --s4:4px; --s8:8px; --s12:12px; --s16:16px; --s24:24px; --s32:32px; --s40:40px; --s48:48px; --s72:72px; --s96:96px;
+  --ui:"Inter","PingFang SC","HarmonyOS Sans SC","Noto Sans SC",system-ui,sans-serif;
+  --mono:"JetBrains Mono","Maple Mono","Fira Code",ui-monospace,SFMono-Regular,monospace;
+}
+[data-theme="dark"]{
+  --canvas:#16130F; --surface:#1E1A15; --sunken:#13100C;
+  --ink:#EDE9E1; --sec:#A8A294; --dis:#5C574C;
+  --accent:#B7472A; --accent-ink:#D9754F; --tint:rgba(183,71,42,.14);
+  --border:#2A251E;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--canvas);color:var(--ink);font:15px/1.7 var(--ui);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  transition:background-color 200ms ease-out,color 200ms ease-out}
+a{color:var(--accent-ink);text-decoration:none;font-weight:600}
+.wrap{width:min(1080px,calc(100% - 48px));margin-inline:auto}
+
+/* nav */
+nav{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--canvas) 92%,transparent);border-bottom:1px solid var(--border)}
+.nav__in{height:64px;display:flex;align-items:center;justify-content:space-between;gap:var(--s24)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;color:var(--ink);letter-spacing:-.01em}
+.brand .mark{width:12px;height:12px;border-radius:3px;background:var(--accent)}
+.nav__links{display:flex;gap:var(--s24);color:var(--sec);font-size:13px}
+.nav__links a{color:inherit;font-weight:400}
+.nav__links a:hover{color:var(--ink)}
+.nav__right{display:flex;align-items:center;gap:var(--s12)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border:1px solid var(--border);
+  border-radius:var(--r-in);background:var(--surface);color:var(--ink);font:600 14px/1 var(--ui);cursor:pointer;
+  transition:border-color 120ms ease-out,filter 120ms ease-out,background-color 120ms ease-out}
+.btn:hover{border-color:#d5cdbf}
+[data-theme="dark"] .btn:hover{border-color:#3a342b}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn--primary:hover{filter:brightness(.96)}
+.toggle{width:38px;height:38px;padding:0;justify-content:center;font-size:15px;color:var(--sec)}
+.toggle::before{content:"\26FE"}
+[data-theme="dark"] .toggle::before{content:"\2600"}
+
+/* hero */
+.hero{padding:var(--s96) 0 var(--s72);border-bottom:1px solid var(--border)}
+.eyebrow{font:650 12px/1 var(--mono);letter-spacing:.12em;color:var(--accent-ink)}
+h1{font-size:34px;line-height:1.26;letter-spacing:-.02em;font-weight:600;max-width:20ch;margin:16px 0}
+.lead{font-size:17px;color:var(--sec);max-width:60ch;margin-bottom:var(--s32)}
+.actions{display:flex;gap:var(--s12);flex-wrap:wrap}
+.statement{margin-top:var(--s48);padding-top:var(--s24);border-top:1px solid var(--border);
+  display:grid;grid-template-columns:1.25fr .75fr;gap:var(--s32);align-items:end}
+.statement .q{font-size:20px;line-height:1.5;font-weight:600;letter-spacing:-.01em}
+.statement .meta{font-size:13px;color:var(--sec);text-align:right;text-wrap:balance;line-height:1.7}
+
+/* section shell */
+section{padding:var(--s72) 0;border-bottom:1px solid var(--border)}
+.head{display:grid;grid-template-columns:auto 1fr;gap:var(--s8) var(--s24);align-items:baseline;margin-bottom:var(--s40)}
+.head .k{font:650 12px/1.5 var(--mono);letter-spacing:.08em;color:var(--accent-ink)}
+.head h2{font-size:20px;font-weight:600;letter-spacing:-.01em;margin-bottom:6px}
+.head p{color:var(--sec);max-width:62ch;font-size:14px}
+
+/* benefit cards */
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--s16)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-out);padding:var(--s24)}
+.card .num{font:12px var(--mono);color:var(--accent-ink);margin-bottom:12px}
+.card h3{font-size:15px;font-weight:600;margin-bottom:6px}
+.card p{font-size:13.5px;color:var(--sec);line-height:1.65}
+
+/* ---------- app mock (界面效果) ---------- */
+.mock{border:1px solid var(--border);border-radius:var(--r-out);background:var(--canvas);overflow:hidden}
+.mock__bar{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;
+  background:var(--surface);border-bottom:1px solid var(--border);font-size:12px;color:var(--sec)}
+.mock__bar .dots{display:flex;gap:6px}
+.mock__bar .dots i{width:9px;height:9px;border-radius:50%;background:var(--border);display:block}
+.mock__body{display:grid;grid-template-columns:186px 1fr 268px;min-height:392px}
+.mock__side{border-right:1px solid var(--border);background:var(--surface);padding:14px 12px;display:flex;flex-direction:column;gap:14px}
+.m-nav{font-size:12.5px;color:var(--sec);display:flex;flex-direction:column;gap:2px}
+.m-nav span{padding:5px 9px;border-radius:var(--r-in)}
+.m-nav .on{background:var(--tint);color:var(--accent-ink);font-weight:600}
+.m-cap{font:650 10px/1 var(--mono);letter-spacing:.1em;color:var(--dis);margin-bottom:6px}
+.m-tree{font-size:12.5px;color:var(--sec);line-height:1.9}
+.m-tree b{color:var(--ink);font-weight:500}
+.m-chips{display:flex;flex-wrap:wrap;gap:5px}
+.m-chip{font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:var(--r-in);color:var(--sec)}
+.m-main{padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.m-toolbar{display:flex;align-items:center;gap:10px}
+.m-toolbar h4{font-size:13px;font-weight:600;white-space:nowrap}
+.m-toolbar .cnt{font-size:11px;color:var(--dis)}
+.m-search{flex:1;min-width:0;height:26px;border:1px solid var(--border);border-radius:14px;background:var(--surface);
+  display:flex;align-items:center;padding:0 10px;font-size:11.5px;color:var(--dis);gap:6px}
+.m-new{height:26px;padding:0 10px;border-radius:var(--r-in);background:var(--accent);color:#fff;font-size:11.5px;font-weight:600;display:flex;align-items:center}
+.m-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.m-card{border:1px solid var(--border);border-radius:var(--r-in);background:var(--surface);padding:8px;display:flex;flex-direction:column;gap:6px}
+.m-card .media{aspect-ratio:4/3;border:1px solid var(--border);border-radius:4px;background:var(--sunken);display:grid;place-items:center;overflow:hidden}
+.m-card .media svg{width:100%;height:100%}
+.m-card .t{font-size:12px;font-weight:600}
+.m-card .d{font-size:11px;color:var(--sec);line-height:1.5}
+.m-card .mt{display:flex;gap:4px;flex-wrap:wrap}
+.m-card .mt i{font-style:normal;font-size:10px;padding:1px 6px;border-radius:4px;background:var(--tint);color:var(--accent-ink)}
+.m-detail{border-left:1px solid var(--border);background:var(--surface);padding:14px;display:flex;flex-direction:column;gap:10px}
+.m-detail h5{font-size:15px;font-weight:600}
+.m-detail .acts{display:flex;gap:6px}
+.m-detail .acts b{font-size:11px;font-weight:600;padding:5px 9px;border-radius:var(--r-in);background:var(--accent);color:#fff}
+.m-detail .acts s{font-size:11px;font-weight:500;padding:5px 9px;border-radius:var(--r-in);border:1px solid var(--border);color:var(--ink);text-decoration:none}
+.m-detail .body{font-size:11.5px;color:var(--sec);line-height:1.75}
+.m-detail .pic{aspect-ratio:4/3;border:1px solid var(--border);border-radius:4px;background:var(--sunken)}
+.mock__note{font-size:12px;color:var(--dis);margin-top:10px;text-align:center}
+
+/* component tone */
+.demo{display:grid;grid-template-columns:1fr 1fr;gap:var(--s24);align-items:start;margin-top:var(--s32)}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-out);padding:var(--s24)}
+.panel .cap{font:11px var(--mono);letter-spacing:.06em;color:var(--sec);margin-bottom:12px}
+.row{display:flex;flex-wrap:wrap;gap:var(--s12);align-items:center;margin-bottom:var(--s16)}
+.row:last-child{margin-bottom:0}
+.lbl{font-size:12px;color:var(--sec);width:100%;margin-bottom:-6px}
+.tagchip{display:inline-flex;padding:4px 10px;border-radius:var(--r-in);font-size:12px;font-weight:500;background:var(--tint);color:var(--accent-ink)}
+.listitem{padding:8px 14px;border-radius:var(--r-in);font-size:14px;color:var(--ink)}
+.listitem--on{background:var(--accent);color:#fff;font-weight:600}
+.sharecard{aspect-ratio:4/3;border-radius:var(--r-out);background:#17181C;padding:16px;display:flex;flex-direction:column;gap:7px;position:relative;overflow:hidden}
+.sharecard .sc-eyebrow{font:650 9px/1 var(--mono);letter-spacing:.14em;color:#C9A24E}
+.sharecard .sc-title{font-size:17px;font-weight:600;color:#F6F3EC;letter-spacing:-.01em}
+.sharecard .sc-rule{height:1px;background:rgba(246,243,236,.18)}
+.sharecard .sc-meta{font-size:10px;color:rgba(246,243,236,.55)}
+.sharecard .sc-body{font-size:10.5px;line-height:1.75;color:rgba(246,243,236,.9);flex:1}
+.sharecard .sc-note{font-size:9.5px;color:rgba(246,243,236,.34)}
+.sharecard .sc-strip{position:absolute;right:0;top:0;bottom:0;width:26%;background:var(--sunken);opacity:.16}
+
+/* scenarios */
+.scene{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--s12)}
+.scene .s{border:1px solid var(--border);border-radius:var(--r-out);background:var(--surface);padding:var(--s16);text-align:center;font-size:13.5px;font-weight:600}
+.scene .s span{display:block;font-weight:400;font-size:12px;color:var(--sec);margin-top:4px}
+
+/* specs */
+.specs{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s12);margin-top:var(--s24)}
+.spec{border:1px solid var(--border);border-radius:var(--r-out);background:var(--surface);padding:var(--s16)}
+.spec .kk{font:650 11px/1 var(--mono);letter-spacing:.08em;color:var(--accent-ink)}
+.spec p{font-size:12.5px;color:var(--sec);margin-top:8px;line-height:1.6}
+
+/* CTA */
+.cta{text-align:center;padding:var(--s96) 0;border-bottom:none}
+.cta h2{font-size:24px;font-weight:600;letter-spacing:-.01em;margin-bottom:12px}
+.cta p{color:var(--sec);max-width:52ch;margin:0 auto var(--s24)}
+.cta .actions{justify-content:center}
+
+footer{padding:var(--s48) 0 var(--s72);color:var(--sec);font-size:12.5px;border-top:1px solid var(--border)}
+.foot{display:flex;justify-content:space-between;gap:var(--s24);flex-wrap:wrap}
+
+@media(max-width:860px){
+  .nav__links{display:none}
+  .hero{padding:var(--s72) 0 var(--s48)}
+  h1{font-size:26px}
+  .statement,.demo,.grid3{grid-template-columns:1fr}
+  .statement .meta{text-align:left}
+  .specs{grid-template-columns:repeat(2,1fr)}
+  .scene{grid-template-columns:repeat(2,1fr)}
+  section{padding:var(--s48) 0}
+  .mock__body{grid-template-columns:1fr;min-height:0}
+  .mock__side,.m-detail{display:none}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+</style>
+</head>
+<body>
+<nav><div class="wrap nav__in">
+  <a class="brand" href="#top"><span class="mark"></span>MT-Deck</a>
+  <div class="nav__links"><a href="#why">为什么选它</a><a href="#look">界面效果</a><a href="#scene">适用场景</a><a href="#get">下载</a></div>
+  <div class="nav__right">
+    <a class="btn" href="https://github.com/HAE8939/MT-Deck" target="_blank" rel="noreferrer">GitHub ↗</a>
+    <button class="btn toggle" id="themeBtn" aria-label="切换明暗主题"></button>
+  </div>
+</div></nav>
+
+<main id="top">
+<!-- Hero -->
+<header class="hero"><div class="wrap">
+  <div class="eyebrow">MT-DECK · V2.1 · LOCAL PROMPT DECK</div>
+  <h1>你的 AI 创作资产，值得被好好保存。</h1>
+  <p class="lead">Prompt 越攒越多，图片越存越乱，真正有用的那条却找不回来。MT-Deck 把提示词存成一个个 Markdown 文件——目录结构就是分类，图片用本地路径关联，再用文件夹、标签、模型、收藏和全文搜索把它们重新变得可发现、可复用。不上传、不接管、不锁定。</p>
+  <div class="actions">
+    <a class="btn btn--primary" href="https://github.com/HAE8939/MT-Deck/releases/latest" target="_blank" rel="noreferrer">下载 Windows 版</a>
+    <a class="btn" href="https://github.com/HAE8939/MT-Deck" target="_blank" rel="noreferrer">查看 GitHub 仓库</a>
+  </div>
+  <div class="statement">
+    <div class="q">工具会换，资产要留下。<br>MT-Deck 只做一个安静的阅读器，从不占有你的内容。</div>
+    <div class="meta">本地 · Markdown · 图片优先 · 无账号 · 无云端<br>Tauri 2 + React · Windows / macOS</div>
+  </div>
+</div></header>
+
+<!-- 为什么选它 -->
+<section id="why"><div class="wrap">
+  <div class="head"><div class="k">§ 01</div><div><h2>为什么选它</h2>
+    <p>它解决的不是"Prompt 存在哪"，而是"一年后我还能不能把那条真正有用的找回来、并且依然打得开"。六个理由：</p></div></div>
+  <div class="grid3">
+    <div class="card"><div class="num">01</div><h3>本地优先</h3><p>所有内容都在你自己选的那个文件夹里。没有服务器、没有同步队列，也没有"服务停了资产就没了"。离线一样能用。</p></div>
+    <div class="card"><div class="num">02</div><h3>Markdown 即真相</h3><p>纯文本、开放格式，永不过时。MT-Deck 只做阅读和索引，从不占有——你随时能用 VS Code、Typora 或记事本接着改。</p></div>
+    <div class="card"><div class="num">03</div><h3>图片优先</h3><p>每条 Prompt 可关联一张参考图或效果图，卡片与详情页都以图开头。在编辑器里点一下就能选图，图片自动收进资料库，随库迁移不丢图。</p></div>
+    <div class="card"><div class="num">04</div><h3>需要时秒级找到</h3><p>全文索引覆盖标题、描述、标签、模型与正文；文件夹、标签、模型三条导航各自可折叠；收藏与最近使用常驻侧栏。</p></div>
+    <div class="card"><div class="num">05</div><h3>身份稳定，改动实时</h3><p>每条 Prompt 有唯一 UUID，文件随便移动、重命名，收藏和历史不会失效。在外部编辑器里改完保存，界面一秒内同步，不用重启。</p></div>
+    <div class="card"><div class="num">06</div><h3>桌面级的克制</h3><p>关到托盘继续待命、重复启动只唤回同一个窗口、侧栏可收起腾出空间、明暗三态、一键导出图文分享卡。功能止步于"够用"。</p></div>
+  </div>
+</div></section>
+
+<!-- 界面效果 -->
+<section id="look"><div class="wrap">
+  <div class="head"><div class="k">§ 02</div><div><h2>它长什么样</h2>
+    <p>三栏工作台：左边导航、中间卡片、右边详情。一张暖调低饱和的纸打底，全界面只允许一个 accent 色——它只属于"当前选中"和"主操作"。右上角可切到美术馆黑。卡片只呈现图片、标题、描述与标签，完整正文收进详情页，点开才看得到。</p></div></div>
+
+  <div class="mock" role="img" aria-label="MT-Deck 三栏界面示意：左侧导航、中间卡片网格、右侧详情面板">
+    <div class="mock__bar"><span>MT-Deck</span><span class="dots"><i></i><i></i><i></i></span></div>
+    <div class="mock__body">
+      <div class="mock__side">
+        <div>
+          <div class="m-cap">LIBRARY</div>
+          <div class="m-nav"><span class="on">全部提示词 · 32</span><span>收藏</span><span>最近使用</span></div>
+        </div>
+        <div>
+          <div class="m-cap">文件夹</div>
+          <div class="m-tree"><b>Image</b><br>&nbsp;&nbsp;GPT-Image<br><b>Video</b><br>&nbsp;&nbsp;Kling<br><b>Writing</b></div>
+        </div>
+        <div>
+          <div class="m-cap">标签</div>
+          <div class="m-chips"><span class="m-chip">室内</span><span class="m-chip">角色</span><span class="m-chip">PPT</span><span class="m-chip">微缩模型</span></div>
+        </div>
+      </div>
+      <div class="m-main">
+        <div class="m-toolbar">
+          <h4>全部提示词</h4><span class="cnt">32 条</span>
+          <span class="m-search">搜索提示词…<span style="margin-left:auto">Ctrl K</span></span>
+          <span class="m-new">+ 新建</span>
+        </div>
+        <div class="m-grid">
+          <div class="m-card">
+            <div class="media"><svg viewBox="0 0 120 90" aria-hidden="true"><rect x="10" y="12" width="100" height="52" rx="2" fill="none" stroke="var(--dis)" stroke-width="1"/><path d="M16 60 L42 34 L58 50 L74 32 L104 62" fill="none" stroke="var(--sec)" stroke-width="1.2"/><circle cx="34" cy="28" r="5" fill="none" stroke="var(--sec)" stroke-width="1.2"/></svg></div>
+            <div class="t">室内渲染 · 奶油风客厅</div>
+            <div class="d">黄昏暖调客厅，自然窗光为主光</div>
+            <div class="mt"><i>室内</i><i>渲染</i><i>GPT-Image</i></div>
+          </div>
+          <div class="m-card">
+            <div class="media"><svg viewBox="0 0 120 90" aria-hidden="true"><rect x="14" y="10" width="42" height="70" rx="2" fill="none" stroke="var(--sec)" stroke-width="1.2"/><rect x="64" y="10" width="42" height="33" rx="2" fill="none" stroke="var(--dis)" stroke-width="1"/><rect x="64" y="47" width="42" height="33" rx="2" fill="none" stroke="var(--dis)" stroke-width="1"/></svg></div>
+            <div class="t">九宫格空间摄影分镜板</div>
+            <div class="d">九个机位同时呈现同一真实空间</div>
+            <div class="mt"><i>设计展板</i><i>PPT</i></div>
+          </div>
+          <div class="m-card">
+            <div class="media" style="background:var(--tint)"><span style="font:11px var(--mono);color:var(--accent-ink)">Prompt Asset</span></div>
+            <div class="t">会议纪要转行动项</div>
+            <div class="d">决议、待定、行动项、风险四段</div>
+            <div class="mt"><i>写作</i><i>工作流</i></div>
+          </div>
+          <div class="m-card">
+            <div class="media"><svg viewBox="0 0 120 90" aria-hidden="true"><circle cx="60" cy="42" r="22" fill="none" stroke="var(--sec)" stroke-width="1.2"/><path d="M60 20 L60 64 M38 42 L82 42" stroke="var(--dis)" stroke-width="1"/></svg></div>
+            <div class="t">角色人物生成</div>
+            <div class="d">全身三视图与表情设定参考板</div>
+            <div class="mt"><i>角色提取</i><i>生成</i></div>
+          </div>
+        </div>
+      </div>
+      <div class="m-detail">
+        <h5>室内渲染 · 奶油风客厅</h5>
+        <div class="acts"><b>复制提示词</b><s>编辑</s></div>
+        <div class="m-chips"><span class="m-chip">GPT-Image 2</span><span class="m-chip">室内</span><span class="m-chip">渲染</span></div>
+        <div class="pic"></div>
+        <div class="m-cap" style="margin:0">PROMPT</div>
+        <div class="body">黄昏时刻的温暖现代客厅，写实摄影质感。左侧自然窗光为主光，米白亚麻沙发、橡木茶几上放一只陶瓷花瓶。35mm 镜头，f/2.0，浅景深……</div>
+      </div>
+    </div>
+  </div>
+  <p class="mock__note">示意图形由 CSS 绘制，与产品同一套设计 token；实际界面以应用为准。</p>
+
+  <div class="demo">
+    <div class="panel">
+      <div class="cap">COMPONENTS / 语气样本</div>
+      <div class="row"><span class="lbl">按钮 · 全界面只有一个彩色出口</span><button class="btn btn--primary">主操作</button><button class="btn">次要操作</button></div>
+      <div class="row"><span class="lbl">标签 Chip</span><span class="tagchip">室内</span><span class="tagchip">角色一致性</span><span class="tagchip">3 references</span></div>
+      <div class="row" style="flex-direction:column;align-items:stretch"><span class="lbl">选中态 · 侧栏导航与筛选</span>
+        <span class="listitem">Image</span><span class="listitem listitem--on">GPT-Image</span><span class="listitem">Video</span></div>
+    </div>
+    <div class="panel">
+      <div class="cap">SHARE CARD / 一键导出的图文卡</div>
+      <div class="sharecard" role="img" aria-label="MT-Deck 导出的 4:3 图文分享卡示意">
+        <div class="sc-strip" aria-hidden="true"></div>
+        <div class="sc-eyebrow">MT-DECK · PROMPT CARD</div>
+        <div class="sc-title">角色人物生成</div>
+        <div class="sc-rule"></div>
+        <div class="sc-meta">GPT-image&nbsp;&nbsp;|&nbsp;&nbsp;角色提取 · 生成</div>
+        <div class="sc-body">你是一位专业的角色视觉定妆图与标准化角色参考板生成专家，精通人物识别一致性控制、人体结构、全身三视图规范……</div>
+        <div class="sc-note">内容较长，已截断 · 完整提示词见 MT-Deck</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="specs">
+    <div class="spec"><div class="kk">本地</div><p>数据就在你选的文件夹里，删掉应用文件也还在。</p></div>
+    <div class="spec"><div class="kk">单文件</div><p>一条 Prompt 一个 Markdown，能读、能 diff、能进 Git。</p></div>
+    <div class="spec"><div class="kk">4:3</div><p>卡片、详情、导出分享卡统一比例，图片不裁不压不变形。</p></div>
+    <div class="spec"><div class="kk">零账号</div><p>没有注册、没有登录、没有云端同步开关。</p></div>
+  </div>
+</div></section>
+
+<!-- 适用场景 -->
+<section id="scene"><div class="wrap">
+  <div class="head"><div class="k">§ 03</div><div><h2>适用场景</h2>
+    <p>为高密度、长时段的创作流而生。这几类资产是它的主场：</p></div></div>
+  <div class="scene">
+    <div class="s">出图 Prompt 库<span>室内 · 角色 · 产品</span></div>
+    <div class="s">视频与分镜<span>运镜 · 参考板 · 设定</span></div>
+    <div class="s">写作与文案<span>结构 · 语气 · 复用模板</span></div>
+    <div class="s">方法论沉淀<span>工作流 · 检查清单</span></div>
+    <div class="s">灵感收藏<span>效果图 · 参考图对照</span></div>
+  </div>
+</div></section>
+
+<!-- CTA -->
+<section class="cta" id="get"><div class="wrap">
+  <h2>把散落的 Prompt，收进一个你完全拥有的地方。</h2>
+  <p>安装版与便携版任选，都不需要账号、不联网也能用。仓库是唯一真源，欢迎提意见。</p>
+  <div class="actions">
+    <a class="btn btn--primary" href="https://github.com/HAE8939/MT-Deck/releases/latest" target="_blank" rel="noreferrer">下载 setup.exe</a>
+    <a class="btn" href="https://github.com/HAE8939/MT-Deck/releases/latest" target="_blank" rel="noreferrer">便携版 portable.exe</a>
+    <a class="btn" href="https://github.com/HAE8939/MT-Deck" target="_blank" rel="noreferrer">GitHub 仓库</a>
+  </div>
+</div></section>
+</main>
+
+<footer><div class="wrap foot">
+  <span>© 2026 HAE · MT-Deck · 本地优先，Markdown 为真</span>
+  <span>MT-Deck V2.1 · 视觉沿用 HAE Creator Design System V0.1</span>
+</div></footer>
+
+<script>
+  const btn=document.getElementById('themeBtn');
+  btn.addEventListener('click',()=>{
+    const h=document.documentElement;
+    h.setAttribute('data-theme', h.getAttribute('data-theme')==='dark'?'light':'dark');
+  });
+</script>
+</body>
+</html>

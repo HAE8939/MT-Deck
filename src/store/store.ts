@@ -3,6 +3,7 @@ import { api, fileToPrompt, isIgnoredRelativePath, toAbsolutePath, toRelativePat
 import { buildPrompt, sanitizeFilename, serializePromptMarkdown } from "../services/promptParser";
 import { searchService } from "../services/searchService";
 import { finishNewPromptSave } from "./editorTransitions";
+import { renderShareCardBase64 } from "../services/shareCardImage";
 import type { AppSettings, Prompt, RecentEntry, ThemeMode } from "../types/prompt";
 import { hasCompletedOnboarding } from "../services/onboarding";
 
@@ -23,6 +24,8 @@ export interface EditorState {
   model: string;
   tagsInput: string;
   description: string;
+  /** Library-relative (`src/..`) or remote image reference (ISSUE-003). */
+  image: string;
   promptContent: string;
   notes: string;
   /** Raw content when opened; null for new prompts. Basis of external-conflict detection. */
@@ -67,6 +70,10 @@ interface AppState {
   renaming: Prompt | null;
   toast: { text: string; key: number } | null;
   firstLoadAt: number;
+  /** Manual sidebar preference, persisted (ISSUE-005). */
+  sidebarVisible: boolean;
+  /** Transient: the open detail panel is temporarily collapsing the sidebar. */
+  sidebarAutoCollapsed: boolean;
 }
 
 const initialState: AppState = {
@@ -88,6 +95,8 @@ const initialState: AppState = {
   renaming: null,
   toast: null,
   firstLoadAt: 0,
+  sidebarVisible: true,
+  sidebarAutoCollapsed: false,
 };
 
 let state: AppState = initialState;
@@ -124,6 +133,7 @@ function persistSettings(): void {
       favorites: state.favorites,
       recent: state.recent,
       onboardingCompleted: state.onboardingCompleted,
+      sidebarVisible: state.sidebarVisible,
     };
     api.saveSettings(s).catch(() => undefined);
   }, 300);
@@ -218,6 +228,7 @@ export async function initApp(): Promise<void> {
         favorites: Array.isArray(s.favorites) ? s.favorites : [],
         recent: Array.isArray(s.recent) ? s.recent : [],
         libraryRoot: s.libraryRoot ?? null,
+        sidebarVisible: s.sidebarVisible ?? true,
       });
     }
   } catch {
@@ -241,16 +252,38 @@ export function setSearchQuery(query: string): void {
 
 export function selectPrompt(key: string | null): void {
   const prompt = key ? state.promptByKey[key] : undefined;
+  // Detail auto-collapse (ISSUE-005): only on the closed → open transition, and
+  // never when the user has already manually hidden the sidebar.
+  const justOpened = key !== null && state.selectedKey === null;
+  const autoCollapsed = justOpened && state.sidebarVisible ? true : key === null ? false : state.sidebarAutoCollapsed;
   if (prompt?.id) {
     const recent = [
       { id: prompt.id, lastOpened: Date.now() },
       ...state.recent.filter((r) => r.id !== prompt.id),
     ].slice(0, 50);
-    set({ selectedKey: key, recent });
+    set({ selectedKey: key, recent, sidebarAutoCollapsed: autoCollapsed });
     persistSettings();
   } else {
-    set({ selectedKey: key });
+    set({ selectedKey: key, sidebarAutoCollapsed: autoCollapsed });
   }
+}
+
+/** Effective sidebar visibility — the only thing the layout should read. */
+export function isSidebarVisible(): boolean {
+  return state.sidebarVisible && !state.sidebarAutoCollapsed;
+}
+
+/**
+ * Manual sidebar toggle (ISSUE-005). Manual intent always wins and is persisted;
+ * expanding by hand while a detail is open also cancels that detail's auto-collapse.
+ */
+export function toggleSidebar(): void {
+  if (isSidebarVisible()) {
+    set({ sidebarVisible: false, sidebarAutoCollapsed: false });
+  } else {
+    set({ sidebarVisible: true, sidebarAutoCollapsed: false });
+  }
+  persistSettings();
 }
 
 // ---------------------------------------------------------------------------
@@ -282,6 +315,46 @@ export async function copyPrompt(prompt: Prompt): Promise<void> {
   }
 }
 
+/** Renders the card as a PNG and saves it where the user chooses (ISSUE-004). */
+export async function exportShareCard(prompt: Prompt): Promise<void> {
+  const root = state.libraryRoot;
+  if (!root) return;
+  try {
+    const base64 = await renderShareCardBase64(prompt, root);
+    if (!base64) {
+      showToast("无法生成分享卡。");
+      return;
+    }
+    const target = await api.saveImagePath(`${sanitizeFilename(prompt.title)}-分享卡.png`);
+    if (!target) return; // cancelled the Save dialog
+    await api.writeImageBase64(target, base64);
+    showToast("分享卡已保存");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "导出分享卡失败";
+    console.error("Share card export failed:", err);
+    showToast(message);
+  }
+}
+
+/**
+ * Opens the image picker and copies the chosen file into `<library>/src/`,
+ * writing the returned relative reference back to the editor draft (ISSUE-003).
+ */
+export async function pickEditorImage(): Promise<void> {
+  const root = state.libraryRoot;
+  if (!root || !state.editor) return;
+  try {
+    const picked = await api.pickImage(root);
+    if (!picked) return; // dialog cancelled
+    updateEditor({ image: picked.relative_reference });
+    showToast("图片已加入资料库");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "选择图片失败";
+    console.error("Pick image failed:", err);
+    showToast(message);
+  }
+}
+
 export async function duplicatePrompt(prompt: Prompt): Promise<void> {
   const root = state.libraryRoot;
   if (!root) return;
@@ -302,7 +375,8 @@ export async function duplicatePrompt(prompt: Prompt): Promise<void> {
     });
     await api.writeFile(absolutePath, content);
     await upsertFromDisk(root, absolutePath);
-    set({ selectedKey: `id:${id}`, nav: { kind: "all" }, searchQuery: "" });
+    set({ nav: { kind: "all" }, searchQuery: "" });
+    selectPrompt(`id:${id}`);
     showToast("提示词副本已创建");
   } catch (err) {
     const message = err instanceof Error ? err.message : "复制提示词失败";
@@ -334,6 +408,7 @@ export function openEditor(prompt?: Prompt): void {
         model: prompt.model ?? "",
         tagsInput: prompt.tags.join(", "),
         description: prompt.description ?? "",
+        image: prompt.image ?? "",
         promptContent: prompt.promptContent,
         notes: prompt.notes ?? "",
         originalContent: prompt.raw,
@@ -352,6 +427,7 @@ export function openEditor(prompt?: Prompt): void {
         model: "",
         tagsInput: "",
         description: "",
+        image: "",
         promptContent: "",
         notes: "",
         originalContent: null,
@@ -368,6 +444,7 @@ function editorDirty(editor: EditorState): boolean {
       editor.model !== "" ||
       editor.tagsInput !== "" ||
       editor.description !== "" ||
+      editor.image !== "" ||
       editor.promptContent !== "" ||
       editor.notes !== ""
     );
@@ -379,6 +456,7 @@ function editorDirty(editor: EditorState): boolean {
     editor.model !== (prompt.model ?? "") ||
     editor.tagsInput !== prompt.tags.join(", ") ||
     editor.description !== (prompt.description ?? "") ||
+    editor.image !== (prompt.image ?? "") ||
     editor.promptContent !== prompt.promptContent ||
     editor.notes !== (prompt.notes ?? "")
   );
@@ -436,7 +514,7 @@ export async function saveEditor(): Promise<"saved" | "conflict" | "invalid"> {
       model: editor.model.trim() || undefined,
       tags,
       description: editor.description.trim() || undefined,
-      image: editor.isNew ? undefined : state.promptByKey[editor.promptKey!]?.image,
+      image: editor.image.trim() || undefined,
       promptContent: editor.promptContent,
       notes: editor.notes.trim() || undefined,
       extra: editor.isNew ? [] : (state.promptByKey[editor.promptKey!]?.extraFrontmatter ?? []),
@@ -458,7 +536,10 @@ export async function saveEditor(): Promise<"saved" | "conflict" | "invalid"> {
         await upsertFromDisk(root, absolutePath);
         return state.promptByKey[`id:${id}`]?.key ?? null;
       },
-      selectPrompt: (key) => set({ selectedKey: key, nav: { kind: "all" }, searchQuery: "" }),
+      selectPrompt: (key) => {
+        set({ nav: { kind: "all" }, searchQuery: "" });
+        selectPrompt(key);
+      },
     });
     showToast("提示词已创建");
     return "saved";
@@ -501,6 +582,7 @@ export async function saveEditor(): Promise<"saved" | "conflict" | "invalid"> {
                 model: parsed.model ?? "",
                 tagsInput: parsed.tags.join(", "),
                 description: parsed.description ?? "",
+                image: parsed.image ?? "",
                 promptContent: parsed.promptContent,
                 notes: parsed.notes ?? "",
                 originalContent: fresh.content,
@@ -584,7 +666,7 @@ export function requestDelete(prompt: Prompt): void {
             try {
               await api.trashFile(prompt.filePath);
               if (state.libraryRoot) await upsertFromDisk(state.libraryRoot, prompt.filePath);
-              if (state.selectedKey === prompt.key) set({ selectedKey: null });
+              if (state.selectedKey === prompt.key) set({ selectedKey: null, sidebarAutoCollapsed: false });
               showToast("已移入回收站");
             } catch (err) {
               const message = err instanceof Error ? err.message : "删除失败";
@@ -639,7 +721,7 @@ async function doChangeLibrary(): Promise<void> {
   const folder = await api.selectFolder();
   if (!folder) return; // user cancelled the picker
   if (folder === state.libraryRoot) return; // same library — nothing to do
-  set({ selectedKey: null, nav: { kind: "all" }, searchQuery: "" });
+  set({ selectedKey: null, sidebarAutoCollapsed: false, nav: { kind: "all" }, searchQuery: "" });
   await api.seedSamples(folder).catch(() => undefined); // no-op unless the folder is empty
   await loadLibrary(folder); // swaps state, restarts watcher on new root, persists
 }

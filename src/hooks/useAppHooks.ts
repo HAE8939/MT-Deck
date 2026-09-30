@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { applyFsEvents, getAppState, requestCloseApp, requestCloseEditor, openEditor, selectPrompt, copyPrompt, saveEditor, cancelConflict } from "../store/store";
+import { applyFsEvents, getAppState, requestCloseApp, requestCloseEditor, openEditor, selectPrompt, copyPrompt, saveEditor, cancelConflict, toggleSidebar } from "../store/store";
 
 /** Subscribes to Rust file-watcher events and applies them to the runtime library. */
 export function useFileWatcher(): void {
@@ -86,6 +86,12 @@ export function useShortcuts(): void {
       if (mod && key === "n") {
         e.preventDefault();
         openEditor();
+        return;
+      }
+      if (mod && key === "b") {
+        // Sidebar show/hide (ISSUE-005), same habit as IDEs.
+        e.preventDefault();
+        toggleSidebar();
         return;
       }
       if (mod && key === "s") {

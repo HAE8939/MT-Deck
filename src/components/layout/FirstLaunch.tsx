@@ -54,6 +54,29 @@ const pages: ObPage[] = [
     ),
   },
   {
+    title: [{ t: "图片，" }, { t: "自动归位。" }],
+    body: "在编辑器点「选择图片」，图片会收进资料库的 src/ 文件夹，卡片与详情页同时显示。也可以自己把图片放进 src/，再填文件名。",
+    art: (
+      <svg className="ob-svg" viewBox="70 40 340 315" aria-hidden="true">
+        <path className="ob-d ob-k" pathLength={1} style={d(0)} d="M88 128 v-20 h46 l12 20" />
+        <rect className="ob-d ob-k" pathLength={1} style={d(1)} x="88" y="128" width="128" height="96" rx="4" />
+        <text className="ob-t" x="152" y="160" textAnchor="middle">src/</text>
+        <rect className="ob-d ob-g" pathLength={1} style={d(3)} x="108" y="174" width="50" height="34" rx="2" />
+        <path className="ob-d ob-g" pathLength={1} style={d(4)} d="M113 202 l12 -13 8 8 8 -9 12 14" />
+        <circle className="ob-d ob-g" pathLength={1} style={d(4)} cx="148" cy="183" r="4" />
+        <path className="ob-d ob-b" pathLength={1} style={d(5)} d="M224 164 H262" />
+        <path className="ob-d ob-b" pathLength={1} style={d(6)} d="M254 156 l8 8 -8 8" />
+        <rect className="ob-d ob-b" pathLength={1} style={d(7)} x="270" y="88" width="120" height="152" rx="4" />
+        <rect className="ob-d ob-b" pathLength={1} style={d(8)} x="282" y="100" width="96" height="64" rx="2" />
+        <path className="ob-d ob-b" pathLength={1} style={d(9)} d="M288 156 l20 -22 13 13 13 -15 19 24" />
+        <path className="ob-d ob-k" pathLength={1} style={d(10)} d="M282 184 H366" />
+        <path className="ob-d ob-k" pathLength={1} style={d(10)} d="M282 200 H338" />
+        <rect className="ob-f" style={d(11)} x="282" y="212" width="34" height="16" rx="3" fill="var(--color-accent-brass-soft)" />
+        <text className="ob-t" x="240" y="344" textAnchor="middle">选择图片  →  src/  →  卡片</text>
+      </svg>
+    ),
+  },
+  {
     title: [{ t: "你的数据，" }, { t: "始终属于你。" }],
     body: "本地 · Markdown · 无账号 · 无云端。",
     art: (

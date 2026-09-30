@@ -156,9 +156,7 @@ description: 把零散的会议记录整理成结构化的决议与行动项。
 
 fn folder_ignored(name: &str) -> bool {
     IGNORED_FOLDERS.contains(&name) || name.starts_with('_') || name.starts_with('.')
-}
-
-fn file_ignored(name: &str) -> bool {
+}fn file_ignored(name: &str) -> bool {
     IGNORED_FILES.contains(&name) || name.starts_with('_') || name.starts_with('.')
 }
 
@@ -255,6 +253,73 @@ pub struct ReadFile {
     pub modified_at: u64,
 }
 
+/// Opens a "Save As" dialog for the share-card PNG (ISSUE-004). Runs on the Rust
+/// side like `select_folder`, so no JS dialog capability is needed.
+#[tauri::command]
+pub async fn save_image_path(app: tauri::AppHandle, default_name: String) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (tx, rx) = std::sync::mpsc::channel::<Option<tauri_plugin_dialog::FilePath>>();
+        app.dialog()
+            .file()
+            .set_title("保存分享卡")
+            .set_file_name(&default_name)
+            .add_filter("PNG 图片", &["png"])
+            .save_file(move |path| {
+                let _ = tx.send(path);
+            });
+        let selected = rx.recv().map_err(|e| e.to_string())?;
+        let Some(selected) = selected else { return Ok(None) };
+        let path = match selected {
+            tauri_plugin_dialog::FilePath::Path(path) => path,
+            tauri_plugin_dialog::FilePath::Url(url) => url
+                .to_file_path()
+                .map_err(|_| "无法读取保存路径。")?,
+        };
+        let mut path = path;
+        if path.extension().is_none() {
+            path.set_extension("png");
+        }
+        Ok(Some(path.to_string_lossy().to_string()))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Writes base64-encoded PNG bytes to `path` (ISSUE-004). Base64 over the plain
+/// JSON IPC keeps this dependency-free and avoids raw-body edge cases.
+#[tauri::command]
+pub fn write_image_base64(path: String, data: String) -> Result<(), String> {
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    let target = PathBuf::from(&path);
+    if let Some(parent) = target.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("无法创建文件夹：{e}"))?;
+    }
+    let bytes = STANDARD.decode(data.trim()).map_err(|e| format!("图片数据损坏：{e}"))?;
+    let temp = target.with_extension("png.tmp");
+    fs::write(&temp, &bytes).map_err(|e| format!("无法写入图片：{e}"))?;
+    fs::rename(&temp, &target).map_err(|e| format!("无法保存图片：{e}"))?;
+    Ok(())
+}
+
+/// Reads an image as base64 so the webview can draw it into a canvas without
+/// tainting it through the cross-origin asset protocol (ISSUE-004).
+#[tauri::command]
+pub fn read_image_base64(path: String) -> Result<Option<String>, String> {
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    let source = PathBuf::from(&path);
+    if !source.is_file() {
+        return Ok(None);
+    }
+    let bytes = fs::read(&source).map_err(|e| format!("无法读取图片：{e}"))?;
+    Ok(Some(STANDARD.encode(bytes)))
+}
+
+#[derive(Serialize)]
+pub struct PickedImage {
+    pub absolute_path: String,
+    pub relative_reference: String,
+}
+
 /// Returns None when the file does not exist (used for conflict checks and watcher updates).
 #[tauri::command]
 pub fn read_file(path: String) -> Result<Option<ReadFile>, String> {
@@ -294,6 +359,65 @@ pub fn rename_file(from: String, to: String) -> Result<(), String> {
         return Err("A file with this name already exists in this folder.".into());
     }
     fs::rename(&from, &to).map_err(|e| format!("Unable to rename file: {e}"))
+}
+
+/// Opens an image picker and copies the chosen file into `<library>/src/`,
+/// returning the library-relative reference (ISSUE-003). The copy keeps the
+/// card portable with the library; the original file is never touched.
+#[tauri::command]
+pub async fn pick_image(app: tauri::AppHandle, root: String) -> Result<Option<PickedImage>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (tx, rx) = std::sync::mpsc::channel::<Option<tauri_plugin_dialog::FilePath>>();
+        app.dialog()
+            .file()
+            .set_title("选择图片")
+            .add_filter("图片", &["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif"])
+            .pick_file(move |path| {
+                let _ = tx.send(path);
+            });
+        let selected = rx.recv().map_err(|e| e.to_string())?;
+        let Some(selected) = selected else { return Ok(None) };
+        let source = match selected {
+            tauri_plugin_dialog::FilePath::Path(path) => path,
+            tauri_plugin_dialog::FilePath::Url(url) => url
+                .to_file_path()
+                .map_err(|_| "无法读取所选图片路径。")?,
+        };
+        if !source.is_file() {
+            return Err("所选图片不存在。".into());
+        }
+        let src_dir = PathBuf::from(&root).join("src");
+        fs::create_dir_all(&src_dir).map_err(|e| format!("无法创建 src 文件夹：{e}"))?;
+        let file_name = source
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| "image.png".into());
+        let stem = PathBuf::from(&file_name)
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| "image".into());
+        let extension = PathBuf::from(&file_name)
+            .extension()
+            .map(|e| e.to_string_lossy().to_ascii_lowercase())
+            .unwrap_or_else(|| "png".into());
+        let mut candidate = src_dir.join(&file_name);
+        let mut index = 2;
+        while candidate.exists() {
+            candidate = src_dir.join(format!("{stem} {index}.{extension}"));
+            index += 1;
+        }
+        fs::copy(&source, &candidate).map_err(|e| format!("无法复制图片：{e}"))?;
+        let final_name = candidate
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or(file_name);
+        Ok(Some(PickedImage {
+            absolute_path: candidate.to_string_lossy().to_string(),
+            relative_reference: format!("src/{final_name}"),
+        }))
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// Creates the default MT-Prompts skeleton inside `parent` and returns the library root.

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useApp, selectPrompt, copyPrompt, duplicatePrompt, openEditor, requestDelete, requestRename, revealFile, toggleFavorite } from "../../store/store";
-import { XIcon, CopyIcon, EditIcon, TrashIcon, ExternalLinkIcon, StarIcon, EditIcon as RenameIcon, LayersIcon } from "../common/icons";
+import { useApp, selectPrompt, copyPrompt, exportShareCard, duplicatePrompt, openEditor, requestDelete, requestRename, revealFile, toggleFavorite } from "../../store/store";
+import { XIcon, CopyIcon, EditIcon, TrashIcon, ExternalLinkIcon, StarIcon, EditIcon as RenameIcon, LayersIcon, ShareIcon } from "../common/icons";
 import type { Prompt } from "../../types/prompt";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { resolvePromptImagePath } from "../../services/imageAssets";
@@ -59,6 +59,9 @@ export function PromptDetail({ prompt }: { prompt: Prompt }) {
           复制副本
         </button>
         <div className="detail-actions-secondary">
+          <button className="icon-btn" title="导出分享卡 PNG（图文卡，自选保存位置）" aria-label="导出分享卡 PNG" onClick={() => void exportShareCard(prompt)}>
+            <ShareIcon size={15} />
+          </button>
           <button className="icon-btn" title="在文件夹中显示" aria-label="在文件夹中显示" onClick={() => void revealFile(prompt)}>
             <ExternalLinkIcon size={15} />
           </button>
@@ -89,7 +92,13 @@ export function PromptDetail({ prompt }: { prompt: Prompt }) {
             <img className="detail-image" src={convertFileSrc(imagePath)} alt={`${prompt.title} 关联图片`} onError={() => setImageFailed(true)} />
           ) : (
             <div className="detail-media-placeholder">
-              <span>{imageFailed ? "图片不可用" : "暂无关联图片"}</span>
+              <span className="placeholder-hint">
+                {prompt.image
+                  ? imageFailed
+                    ? "图片未命中 · 点「编辑」重新选择，或把图片放进资料库的 src/ 文件夹"
+                    : "图片地址已记录，暂不作联网加载"
+                  : "暂无关联图片 · 点「编辑」→「选择图片」即可配图"}
+              </span>
             </div>
           )}
         </div>

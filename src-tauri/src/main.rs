@@ -40,8 +40,24 @@ fn open_external_url(url: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Brings the main window back to the foreground. Shared by the tray menu,
+/// tray double-click and the single-instance callback so every "唤回" path
+/// behaves identically (ISSUE-006).
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
 fn main() {
     tauri::Builder::default()
+        // Must be the first plugin registered: a second launch must bail out
+        // before any window or tray is created.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            show_main_window(app);
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(watcher::WatcherState::default())
@@ -58,23 +74,13 @@ fn main() {
                 .menu(&menu)
                 .tooltip("MT-Deck")
                 .on_menu_event(|app, event| match event.id().as_ref() {
-                    "show" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.unminimize();
-                            let _ = window.set_focus();
-                        }
-                    }
+                    "show" => show_main_window(app),
                     "quit" => app.exit(0),
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::DoubleClick { .. } = event {
-                        if let Some(window) = tray.app_handle().get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.unminimize();
-                            let _ = window.set_focus();
-                        }
+                        show_main_window(tray.app_handle());
                     }
                 })
                 .build(app)?;
@@ -87,6 +93,10 @@ fn main() {
             filesystem::read_file,
             filesystem::write_prompt_file,
             filesystem::rename_file,
+            filesystem::pick_image,
+            filesystem::save_image_path,
+            filesystem::write_image_base64,
+            filesystem::read_image_base64,
             filesystem::create_library,
             filesystem::seed_samples,
             filesystem::get_file_mtime,

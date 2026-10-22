@@ -22,7 +22,7 @@
 - **REJECTED**（2026-09-20 用户否决，勿再提）「图片生成模板」功能 —— `imageGeneration.ts` 已入回收站，store/测试/CSS 残留已清。
 - **DECIDED**（V2.1.0）侧栏状态机：`store` 里 `sidebarVisible`（手动偏好，持久化到 settings.json）+ `sidebarAutoCollapsed`（瞬态）。只在「详情 关→开」这一次转换上、且仅当手动偏好为显示时才自动收起；手动收起永不被自动流程推翻；详情打开期间手动展开 = 明确意图，关详情后不再自动收。有效可见性 = 两者与运算，读 `isSidebarVisible()`。**所有打开详情的入口必须走 `selectPrompt()`**，旁路会绕过状态机。
 - **DECIDED**（V2.1.0）图片入口：编辑器 `image` 字段可手填相对路径/远程地址，也可「选择图片」→ Rust `pick_image` 把图**复制进 `<库>/src/`**（重名加序号）后写回 `src/xxx.png`。`saveEditor` 统一用 `editor.image`（不再从旧 frontmatter 回带）。
-- **DECIDED**（ISSUE-008 · 2026-10-20 落地并验收通过，随 V2.2.0 发布）卡片支持 1–8 张图，上一条的单值字段被它取代：
+- **DECIDED**（ISSUE-008 · 2026-10-22 落地并验收通过，随 V2.2.0 发布）卡片支持 1–8 张图，上一条的单值字段被它取代：
   - **真源换成 `images:` YAML 列表**（方案 B）。解析时 `images` 优先、为空则回落老字段 `image`（读成单元素列表），两个 key 都不落入 `extra`；保存统一写 `images:`、不再写 `image:`，老卡片无需迁移即正常显示。序列化复用 `yamlScalar`，远程地址含 `:` 会被加引号，回读靠 `stripQuotes` 还原，可 round-trip。
   - **第 1 张 = 主图**：卡片封面位与分享卡 PNG 封面都只用 `images[0]`；卡片右下角显示张数角标（>1 时）。详情页 = 主图 + 缩略图条点选切换 + `n / 总数` 角标。
   - **8 张只约束“添加”动作**：满额禁用按钮并在 hint 说明；Rust `pick_images` 收到剩余额度后**先截断再复制**（否则 src/ 会留孤儿），返回值带 `truncated` / `failed` 计数，JS 侧 `addImages()` 再兜一层去重，toast 如实报“几张没加上 / 几张复制失败”。手写的超限列表读取时**不静默截断**，完整读出、详情页换行铺开。

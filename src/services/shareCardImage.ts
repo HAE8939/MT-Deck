@@ -57,7 +57,8 @@ export async function renderShareCardBase64(prompt: Prompt, libraryRoot: string)
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  const image = await loadCoverImage(libraryRoot, prompt.image);
+  // The share PNG always uses the cover (image index 0), never a per-card choice.
+  const image = await loadCoverImage(libraryRoot, prompt.images[0]);
   ctx.scale(SHARE_CARD_SCALE, SHARE_CARD_SCALE);
   drawShareCard(ctx, {
     title: prompt.title,

@@ -20,7 +20,7 @@ tags:
 
 description: 一句话说明这条提示词做什么。
 
-image:
+images:
 ---
 
 # Prompt
@@ -320,6 +320,16 @@ pub struct PickedImage {
     pub relative_reference: String,
 }
 
+/// Result of one multi-select round. The counters exist so nothing disappears
+/// without a word: files cut by the cap or refused by the copy are reported back
+/// instead of silently vanishing (ISSUE-008).
+#[derive(Serialize)]
+pub struct PickedImages {
+    pub images: Vec<PickedImage>,
+    pub truncated: usize,
+    pub failed: usize,
+}
+
 /// Returns None when the file does not exist (used for conflict checks and watcher updates).
 #[tauri::command]
 pub fn read_file(path: String) -> Result<Option<ReadFile>, String> {
@@ -361,60 +371,103 @@ pub fn rename_file(from: String, to: String) -> Result<(), String> {
     fs::rename(&from, &to).map_err(|e| format!("Unable to rename file: {e}"))
 }
 
-/// Opens an image picker and copies the chosen file into `<library>/src/`,
-/// returning the library-relative reference (ISSUE-003). The copy keeps the
-/// card portable with the library; the original file is never touched.
+/// Copies one image under `src_dir`, adding " 2", " 3", … on a name clash. The
+/// original file is never touched, so the card stays portable with the library.
+fn copy_image_into_src(src_dir: &Path, source: &Path) -> Result<PickedImage, String> {
+    let file_name = source
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "image.png".into());
+    let stem = PathBuf::from(&file_name)
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| "image".into());
+    let extension = PathBuf::from(&file_name)
+        .extension()
+        .map(|e| e.to_string_lossy().to_ascii_lowercase())
+        .unwrap_or_else(|| "png".into());
+    let mut candidate = src_dir.join(&file_name);
+    let mut index = 2;
+    while candidate.exists() {
+        candidate = src_dir.join(format!("{stem} {index}.{extension}"));
+        index += 1;
+    }
+    fs::copy(source, &candidate).map_err(|e| format!("无法复制图片：{e}"))?;
+    let final_name = candidate
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or(file_name);
+    Ok(PickedImage {
+        absolute_path: candidate.to_string_lossy().to_string(),
+        relative_reference: format!("src/{final_name}"),
+    })
+}
+
+/// Opens a multi-select image picker and copies the chosen files into
+/// `<library>/src/` (ISSUE-008, was single-select in ISSUE-003).
+///
+/// `limit` is how many slots the card still has free. The selection is truncated
+/// *before* copying, so picking 20 files for a card that can hold 3 never leaves
+/// 17 orphaned copies behind. Cancel yields an empty list.
 #[tauri::command]
-pub async fn pick_image(app: tauri::AppHandle, root: String) -> Result<Option<PickedImage>, String> {
+pub async fn pick_images(
+    app: tauri::AppHandle,
+    root: String,
+    limit: usize,
+) -> Result<PickedImages, String> {
+    const EMPTY: PickedImages = PickedImages {
+        images: Vec::new(),
+        truncated: 0,
+        failed: 0,
+    };
+    if limit == 0 {
+        return Ok(EMPTY);
+    }
     tauri::async_runtime::spawn_blocking(move || {
-        let (tx, rx) = std::sync::mpsc::channel::<Option<tauri_plugin_dialog::FilePath>>();
+        // `pick_files` hands back an Option: None on cancel, Some(vec![]) on an empty selection.
+        let (tx, rx) = std::sync::mpsc::channel::<Option<Vec<tauri_plugin_dialog::FilePath>>>();
         app.dialog()
             .file()
             .set_title("选择图片")
             .add_filter("图片", &["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif"])
-            .pick_file(move |path| {
-                let _ = tx.send(path);
+            .pick_files(move |paths| {
+                let _ = tx.send(paths);
             });
-        let selected = rx.recv().map_err(|e| e.to_string())?;
-        let Some(selected) = selected else { return Ok(None) };
-        let source = match selected {
-            tauri_plugin_dialog::FilePath::Path(path) => path,
-            tauri_plugin_dialog::FilePath::Url(url) => url
-                .to_file_path()
-                .map_err(|_| "无法读取所选图片路径。")?,
-        };
-        if !source.is_file() {
-            return Err("所选图片不存在。".into());
+        let selected = rx.recv().map_err(|e| e.to_string())?.unwrap_or_default();
+        if selected.is_empty() {
+            return Ok(EMPTY);
         }
+        let truncated = selected.len().saturating_sub(limit);
         let src_dir = PathBuf::from(&root).join("src");
         fs::create_dir_all(&src_dir).map_err(|e| format!("无法创建 src 文件夹：{e}"))?;
-        let file_name = source
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| "image.png".into());
-        let stem = PathBuf::from(&file_name)
-            .file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_else(|| "image".into());
-        let extension = PathBuf::from(&file_name)
-            .extension()
-            .map(|e| e.to_string_lossy().to_ascii_lowercase())
-            .unwrap_or_else(|| "png".into());
-        let mut candidate = src_dir.join(&file_name);
-        let mut index = 2;
-        while candidate.exists() {
-            candidate = src_dir.join(format!("{stem} {index}.{extension}"));
-            index += 1;
+        let mut images = Vec::new();
+        let mut failed = 0usize;
+        for selected in selected.into_iter().take(limit) {
+            let source = match selected {
+                tauri_plugin_dialog::FilePath::Path(path) => path,
+                tauri_plugin_dialog::FilePath::Url(url) => match url.to_file_path() {
+                    Ok(path) => path,
+                    Err(_) => {
+                        failed += 1;
+                        continue;
+                    }
+                },
+            };
+            if !source.is_file() {
+                failed += 1;
+                continue;
+            }
+            // One bad file (locked, vanished) must not throw away the rest of the batch.
+            match copy_image_into_src(&src_dir, &source) {
+                Ok(image) => images.push(image),
+                Err(_) => failed += 1,
+            }
         }
-        fs::copy(&source, &candidate).map_err(|e| format!("无法复制图片：{e}"))?;
-        let final_name = candidate
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or(file_name);
-        Ok(Some(PickedImage {
-            absolute_path: candidate.to_string_lossy().to_string(),
-            relative_reference: format!("src/{final_name}"),
-        }))
+        Ok(PickedImages {
+            images,
+            truncated,
+            failed,
+        })
     })
     .await
     .map_err(|e| e.to_string())?

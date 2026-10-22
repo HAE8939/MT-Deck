@@ -726,6 +726,7 @@ body {
 }
 
 .detail-media {
+  position: relative;
   aspect-ratio: 4 / 3;
   margin: 14px 24px 0;
   overflow: hidden;
@@ -888,7 +889,25 @@ body {
   color: var(--color-ink-muted);
 }
 
-/* ---------------- Editor image field (ISSUE-003) ---------------- */
+/* ---------------- Editor image field (ISSUE-003, multi-image in ISSUE-008) ---------------- */
+
+.field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.field-count {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-mini {
+  padding: 2px 7px;
+  font-size: 12px;
+}
 
 .image-row {
   display: flex;
@@ -905,31 +924,52 @@ body {
   flex-shrink: 0;
 }
 
-.image-preview {
-  margin-top: 6px;
-  width: 132px;
-  height: 99px; /* 4:3, matching the card media ratio */
+.image-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.image-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 150px;
+}
+
+.image-tile-media {
+  position: relative;
+  width: 150px;
+  aspect-ratio: 4 / 3; /* same crop as the card media */
   overflow: hidden;
   background: var(--color-ground);
   border: 1px solid var(--color-hairline);
 }
 
-.image-preview img {
+.image-tile.is-primary .image-tile-media {
+  border-color: var(--color-accent-brass);
+}
+
+.image-tile-media img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.image-preview.is-error {
+.image-tile-media.is-broken {
   border-color: var(--color-danger);
+  border-style: dashed;
 }
 
-.image-preview.is-error img {
+.image-tile-media.is-broken img {
   display: none;
 }
 
-.image-preview.is-error::after {
+.image-tile-media.is-broken::after {
   content: "未找到该图片";
   display: grid;
   place-items: center;
@@ -937,6 +977,118 @@ body {
   height: 100%;
   color: var(--color-danger);
   font-size: 12px;
+}
+
+.image-tile-fallback {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+}
+
+.image-tile-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 1px 6px;
+  background: var(--color-accent-brass-soft);
+  color: var(--color-accent-brass);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.image-tile-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.image-tile-spacer {
+  flex: 1;
+}
+
+.image-tile-placeholder {
+  padding-left: 2px;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+/* ---------------- Detail image viewer (ISSUE-008) ---------------- */
+
+.detail-media-count {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 1px 6px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-thumbs {
+  display: flex;
+  gap: 6px;
+  margin: 8px 24px 0;
+  padding-bottom: 4px;
+  overflow-x: auto;
+}
+
+.detail-thumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 48px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-ground);
+  cursor: pointer;
+  transition: border-color var(--motion-fast);
+}
+
+.detail-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-thumb.is-active {
+  border-color: var(--color-accent-brass);
+}
+
+.detail-thumb.is-broken {
+  border-color: var(--color-danger);
+  border-style: dashed;
+}
+
+.detail-thumb-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.detail-thumb-index {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: 0 4px;
+  background: var(--color-surface-raised);
+  color: var(--color-ink-muted);
+  font-size: 10px;
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
 }
 
 .placeholder-hint {

@@ -93,7 +93,7 @@ fn main() {
             filesystem::read_file,
             filesystem::write_prompt_file,
             filesystem::rename_file,
-            filesystem::pick_image,
+            filesystem::pick_images,
             filesystem::save_image_path,
             filesystem::write_image_base64,
             filesystem::read_image_base64,

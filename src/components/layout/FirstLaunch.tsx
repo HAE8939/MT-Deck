@@ -55,7 +55,7 @@ const pages: ObPage[] = [
   },
   {
     title: [{ t: "图片，" }, { t: "自动归位。" }],
-    body: "在编辑器点「选择图片」，图片会收进资料库的 src/ 文件夹，卡片与详情页同时显示。也可以自己把图片放进 src/，再填文件名。",
+    body: "在编辑器点“选择图片”，可一次挑多张（最多 8 张），图片会收进资料库的 src/ 文件夹；第一张作为卡片封面，其余在详情页翻看。也可以自己把图片放进 src/，再填文件名。",
     art: (
       <svg className="ob-svg" viewBox="70 40 340 315" aria-hidden="true">
         <path className="ob-d ob-k" pathLength={1} style={d(0)} d="M88 128 v-20 h46 l12 20" />

@@ -155,6 +155,46 @@
   - 响应式：860px 以下折叠导航链接、单列化，并**隐藏示意图的侧栏与详情栏**（窄屏放不下三栏）；尊重 `prefers-reduced-motion`。
   - **GitHub Pages 已发布（2026-09-30）**：<https://hae8939.github.io/MT-Deck/>。踩点记录：Pages 的「从分支部署」只给 `/` 或 `/docs` 两个位置，选 `/docs` 会把 `ISSUES_BACKLOG.md` 与两份 spec 一起公开，选 `/` 则首页变成打不开的 Vite 入口 → 最终用 `.github/workflows/pages.yml`（Actions 源）只把 `docs/landing/` 发成站点根，源文件零复制。README 顶部链接已指向线上地址。
 
+## ISSUE-008 · 提示词卡片只支持一张图，需支持 1–8 张
+
+- 记录日期：2026-10-20
+- 状态：已修（2026-10-20 实现，HAE 验收通过）
+- 需求：一张卡片当前只能挂一张配图，要支持一张或多张，**最多 8 张**。
+- 现象 / 现状（已核代码）：`image` 从数据模型到 UI 全链路都是单值。
+  - `types/prompt.ts` `Prompt.image?: string`；`store.ts` `EditorState.image: string`。
+  - `promptParser.ts`：`asString()` 遇到 YAML 列表直接返回 `undefined` → **手写在 frontmatter 里的图片列表会被静默丢弃**；序列化只写一行 `image: xxx`。
+  - Rust `filesystem.rs::pick_image` 用 `pick_file()`（单选），复制一张进 `<库>/src/` 后回一个 `src/xxx.png`。
+  - 展示：`PromptCard` 单张 `card-media`；`PromptDetail` 单张 `.detail-image`；`shareCardImage.loadCoverImage` 单张封面。
+- 影响：多图场景（同一条 prompt 的多个视角 / 正例反例对照 / 步骤图）现在只能拆成多张卡片或留空，资产库的表达能力受限。
+- 涉及范围（实施前先逐个过）：`types/prompt.ts`、`promptParser.ts`（解析 + 序列化 + 单测）、`imageAssets.ts`（解析需支持数组）、`store.ts`（`EditorState` / `openEditor` / `saveEditor` / `editorDirty` / `reloadIntoEditor` / fs 事件回填）、`PromptEditor.tsx`、`PromptCard.tsx`、`PromptDetail.tsx`、`shareCardImage.ts`、Rust `pick_image`、`FirstLaunch` 第 3 页文案、AGENTS.md 里 V2.1.0 的"图片入口" DECIDED 条目需同步改写。
+- 候选方案（待讨论，先不定）：
+  1. **数据形态**（关键待定，二选一）：
+     - A 单字段多态：`image:` 既接受标量也接受列表，写出时 1 张用标量、多张用列表。改动面最小、老文件零迁移；代价是同名字段两种 YAML 形态，手写时容易困惑。
+     - B 新增 `images:` 列表字段，读取时 `images` 优先、缺失回落 `image`，保存后统一写 `images:`。语义干净、类型单一；代价是要定"两个字段同时存在时以谁为准 + 老字段是否清掉"，且一次保存会改写老卡片。
+     - 我的倾向：**B**（长期可读性优先，且 markdown 是唯一真源、字段语义含糊会一直还债）。但 B 必须保证只含 `image:` 的老卡片升级后不丢图。
+  2. **主图语义**：数组顺序即展示顺序，**第 1 张 = 主图**（卡片封面位与分享卡封面都用它）。这样卡片布局不用改，代价是要有"设为封面"的入口。
+  3. **编辑器 UI**：把现有单个文本框换成图片列表条——缩略图若干 + 每张可删除 + "设为主图" + 上下移，末尾一个"添加图片"按钮走多选。**排序先用按钮而非拖拽**（引导页的拖拽翻页已被否决，别默认上拖拽）。文本框（手填相对路径 / 远程地址）保留与否待定，倾向保留为"添加图片地址"的小入口。
+  4. **多选实现**：Rust 侧新增 `pick_images`（`dialog().file().pick_files()`，返回 `Vec<PickedImage>`），复用现有"复制进 `src/` + 重名加序号"逻辑，逐个文件循环即可；能力仍不需要新增（dialog 在 Rust 侧调）。
+  5. **8 张上限的口径**（待定）：软限制还是硬拒绝。倾向 = 前端在剩余额度为 0 时禁用"添加"按钮并给一行说明；多选返回超过剩余额度时只取前 N 张并提示"最多 8 张，已保留前 8 张"，不要静默丢弃。
+  6. **详情页展示**：主图大 + 其余横向缩略图条，点缩略图切换大图（不换布局、成本最低）。备选 = 首图大 + 其余瀑布平铺（多图时页面很长）。分享卡先固定用主图，多图拼贴 DEFERRED。
+- 风险 / 注意：
+  - 单值改数组会牵动 `saveEditor`，V2.1.0 刚修过的"编辑清空 / 新建恒空"不对称坑要在数组版上重犯一遍——新建/编辑/外部改动三条路径的回填必须对称。
+  - 删除图片 = **只解除引用，不删 `src/` 里的物理文件**（副本语义，与现状一致）。随之而来 `src/` 会积累孤儿文件，清理工具属新功能，本条不做（DEFERRED），至多记录。
+  - 远程地址（`http(s)`）当前不加载，多图下同样只记不显；8 张上限是否把远程地址计入，要一并定。
+  - asset 协议已递归放权到库根，新增图片无需改 scope（沿用 V2.1.0 结论）。
+- 验收标准：在 UI 里给一张卡片添加 / 删除 / 排序 / 设主图共 1–8 张本地图片，重开应用后顺序与主图保留；第 9 张加不进去且有明确提示；只含单张老 `image:` 的卡片升级后照常显示；手写 `images:` 列表能被读取；卡片显示主图，详情页能浏览全部图；分享卡用主图；`npm run build` + `node --test <显式文件列表>` 全绿。
+- 落地情况（2026-10-20，采纳 **方案 1B + 2 + 3 + 4 + 5 + 6**，HAE 目视验收通过）：
+  - **数据形态 1B**：`Prompt.images: string[]`（必存，空数组即无图），`Prompt.image` 与 `EditorState.image` 单值字段全部删除。`promptParser.ts` 新增 `readImageRefs()`：`images` 非空即用它，否则把老 `image` 读成单元素列表；`KNOWN_KEYS` 同时收 `image` 与 `images`，两者都不落入 `extra` → 保存只写 `images:` 列表，老字段被自然收敛掉、不会重复出一份。远程地址经 `yamlScalar` 加引号（值里有 `:`），回读由 `stripQuotes` 还原，已测 round-trip。Rust 侧 `_Prompt Template.md` 模板同步改成 `images:`。
+  - **主图语义 2**：`images[0]` = 封面。卡片仍只显示一张，右下角加张数角标（`>1` 时出现，`.card-media-count`）；分享卡固定取 `prompt.images[0]`，多图拼贴按计划不做。
+  - **编辑器 3**：单个文本框换成缩略图条（150px / 4:3，每行 4 张、最多两行），每张带 设为封面 · 前移 · 后移 · 移除；首张左上角“封面”标、边框用 accent 描。文本框保留但语义变成“填地址 → 添加地址”（Enter 只入列表、不误交表单）。排序**用按钮不用拖拽**。计数 `n / 8` 挂在字段标题右侧，hint 在满额时切换为“已达 8 张上限”。
+  - **多选 4**：Rust `pick_image` → `pick_images(app, root, limit)`，`pick_files()` 多选，复制逻辑抽成 `copy_image_into_src()`（重名加序号、原图不动）。返回 `{ images, truncated, failed }`：`limit` = 剩余额度，**截断发生在复制之前**，所以一次选 20 张不会往 `src/` 里灌孤儿文件；单个文件复制失败只计数不中断整批。JS 侧 `addImages()` 再兜一层（去重 + 上限），toast 如实拼出“已添加 N 张 · 最多 8 张，M 张未添加 · K 张复制失败”。**不需要新增 capability**（仍走 Rust 侧 dialog + 自定义 invoke）。
+  - **上限口径 5**：硬约束只加在“添加”动作上（满额禁用“选择图片 / 添加地址”，store 侧再挡一次）。**手写的超限列表读取时不截断**，详情页缩略图条自动换行铺开——宁可版式难看，也不静默丢用户数据。
+  - **详情页 6**：主图 + 缩略图条点选切换 + `n / 总数` 角标，全在既有 `.detail-scroll` 内、随内容滚动，标题/操作栏/文件名不动。加载失败按**引用**记录（一张坏图不拖垮整条），切卡片时 `active` 与失败集合都重置。占位文案按“无图 / 远程地址 / 第 N 张未命中”三种情况分别给可操作指引。
+  - 新增 `tests/promptImages.test.ts`（12 例：列表顺序、老字段回落、双字段优先级、空值、未知字段共存、超限完整读取、序列化+回读、无图不写字段、8 张往返、上限与去重、三个排序helper、dirty 比对helper）；`duplicatePrompt.test.ts` 相应改写。`node --test` 21 例全绿，`npm run build` 通过，`cargo check --offline` 通过。
+  - 缓存与状态：asset 协议对库根的递归放权沿用，新增图片零配置；纯函数集中在 `services/imageAssets.ts`，store 只负责编排。
+  - **已知遗留（不在本条范围内）**：把缺失图片补进 `src/` 后，同一路径的 `<img>` 已 `onError`，需切走再回来或重启才刷新——属 ISSUE-002 记过的 asset 缓存子类，要破缓存得给 URL 加版本参数，另案处理。孤儿图片（只解除引用、`src/` 副本保留）的清理工具按计划仍不做。
+  - 顺带：`icons.tsx` 补 `ChevronRightIcon`（前移/后移用）；`app.css` 补 `.btn:disabled` / `.icon-btn:disabled` 样式（本项目此前没有禁用态，保留 tooltip 可见所以只降透明度、不用 `pointer-events:none`）。
+
 ---
 
 _下次一起更新修复时：先按上面「候选方案」过一遍再动手，避免直接实现。_

@@ -1,6 +1,15 @@
 import { useSyncExternalStore } from "react";
 import { api, fileToPrompt, isIgnoredRelativePath, toAbsolutePath, toRelativePath, findUniquePromptPath } from "../services/promptService";
 import { buildPrompt, sanitizeFilename, serializePromptMarkdown } from "../services/promptParser";
+import {
+  MAX_PROMPT_IMAGES,
+  addImages,
+  makeImagePrimary,
+  moveImage,
+  normalizeImageRefs,
+  removeImageAt,
+  sameImageList,
+} from "../services/imageAssets";
 import { searchService } from "../services/searchService";
 import { finishNewPromptSave } from "./editorTransitions";
 import { renderShareCardBase64 } from "../services/shareCardImage";
@@ -24,8 +33,11 @@ export interface EditorState {
   model: string;
   tagsInput: string;
   description: string;
-  /** Library-relative (`src/..`) or remote image reference (ISSUE-003). */
-  image: string;
+  /**
+   * Ordered image references, index 0 = cover (ISSUE-008). Library-relative (`src/..`)
+   * or remote. Kept normalized on save so dirty-tracking never trips on whitespace.
+   */
+  images: string[];
   promptContent: string;
   notes: string;
   /** Raw content when opened; null for new prompts. Basis of external-conflict detection. */
@@ -337,22 +349,83 @@ export async function exportShareCard(prompt: Prompt): Promise<void> {
 }
 
 /**
- * Opens the image picker and copies the chosen file into `<library>/src/`,
- * writing the returned relative reference back to the editor draft (ISSUE-003).
+ * Opens a multi-select image picker and copies every chosen file into
+ * `<library>/src/`, appending the returned references to the editor draft
+ * (ISSUE-008, multi-image version of ISSUE-003's `pickEditorImage`).
+ *
+ * The remaining slot count is passed down so Rust truncates before copying —
+ * a cancelled-or-oversized selection never litters `src/` with orphan files.
  */
-export async function pickEditorImage(): Promise<void> {
+export async function addEditorImages(): Promise<void> {
   const root = state.libraryRoot;
-  if (!root || !state.editor) return;
+  const editor = state.editor;
+  if (!root || !editor) return;
+  const current = normalizeImageRefs(editor.images);
+  if (current.length >= MAX_PROMPT_IMAGES) {
+    showToast(`最多 ${MAX_PROMPT_IMAGES} 张图片，先移除一张再加。`);
+    return;
+  }
   try {
-    const picked = await api.pickImage(root);
-    if (!picked) return; // dialog cancelled
-    updateEditor({ image: picked.relative_reference });
-    showToast("图片已加入资料库");
+    const result = await api.pickImages(root, MAX_PROMPT_IMAGES - current.length);
+    const refs = result.images.map((p) => p.relative_reference);
+    const { images, added, dropped } = addImages(current, refs);
+    updateEditor({ images });
+    const parts: string[] = [];
+    if (added > 0) parts.push(added > 1 ? `已添加 ${added} 张图片` : "图片已加入资料库");
+    const overflow = result.truncated + dropped;
+    if (overflow > 0) parts.push(`最多 ${MAX_PROMPT_IMAGES} 张，${overflow} 张未添加`);
+    if (result.failed > 0) parts.push(`${result.failed} 张复制失败`);
+    if (parts.length === 0) {
+      // Cancelled, or every choice was already on the card.
+      if (refs.length > 0) showToast("这些图片已在列表中");
+      return;
+    }
+    showToast(parts.join(" · "));
   } catch (err) {
     const message = err instanceof Error ? err.message : "选择图片失败";
-    console.error("Pick image failed:", err);
+    console.error("Pick images failed:", err);
     showToast(message);
   }
+}
+
+/** Adds a hand-typed reference: a library-relative path or a remote URL. */
+export function addEditorImageReference(reference: string): void {
+  const editor = state.editor;
+  if (!editor) return;
+  const value = reference.trim();
+  if (!value) return;
+  const current = normalizeImageRefs(editor.images);
+  if (current.includes(value)) {
+    showToast("该地址已在图片列表中");
+    return;
+  }
+  if (current.length >= MAX_PROMPT_IMAGES) {
+    showToast(`最多 ${MAX_PROMPT_IMAGES} 张图片，先移除一张再加。`);
+    return;
+  }
+  updateEditor({ images: [...current, value] });
+}
+
+export function removeEditorImage(index: number): void {
+  const editor = state.editor;
+  if (!editor) return;
+  // Drops the reference only — the copy under `src/` stays on purpose, so other
+  // cards pointing at the same image are never broken by an edit here.
+  updateEditor({ images: removeImageAt(normalizeImageRefs(editor.images), index) });
+}
+
+/** Reorders one image (delta −1 前移 / +1 后移) without touching the others. */
+export function moveEditorImage(index: number, delta: number): void {
+  const editor = state.editor;
+  if (!editor) return;
+  updateEditor({ images: moveImage(normalizeImageRefs(editor.images), index, delta) });
+}
+
+/** Promotes an image to index 0, the card cover and the share-card artwork. */
+export function makeEditorImagePrimary(index: number): void {
+  const editor = state.editor;
+  if (!editor) return;
+  updateEditor({ images: makeImagePrimary(normalizeImageRefs(editor.images), index) });
 }
 
 export async function duplicatePrompt(prompt: Prompt): Promise<void> {
@@ -368,7 +441,7 @@ export async function duplicatePrompt(prompt: Prompt): Promise<void> {
       model: prompt.model,
       tags: prompt.tags,
       description: prompt.description,
-      image: prompt.image,
+      images: prompt.images,
       promptContent: prompt.promptContent,
       notes: prompt.notes,
       extra: prompt.extraFrontmatter,
@@ -408,7 +481,7 @@ export function openEditor(prompt?: Prompt): void {
         model: prompt.model ?? "",
         tagsInput: prompt.tags.join(", "),
         description: prompt.description ?? "",
-        image: prompt.image ?? "",
+        images: [...prompt.images],
         promptContent: prompt.promptContent,
         notes: prompt.notes ?? "",
         originalContent: prompt.raw,
@@ -427,7 +500,7 @@ export function openEditor(prompt?: Prompt): void {
         model: "",
         tagsInput: "",
         description: "",
-        image: "",
+        images: [],
         promptContent: "",
         notes: "",
         originalContent: null,
@@ -444,7 +517,7 @@ function editorDirty(editor: EditorState): boolean {
       editor.model !== "" ||
       editor.tagsInput !== "" ||
       editor.description !== "" ||
-      editor.image !== "" ||
+      editor.images.length > 0 ||
       editor.promptContent !== "" ||
       editor.notes !== ""
     );
@@ -456,7 +529,7 @@ function editorDirty(editor: EditorState): boolean {
     editor.model !== (prompt.model ?? "") ||
     editor.tagsInput !== prompt.tags.join(", ") ||
     editor.description !== (prompt.description ?? "") ||
-    editor.image !== (prompt.image ?? "") ||
+    !sameImageList(normalizeImageRefs(editor.images), prompt.images) ||
     editor.promptContent !== prompt.promptContent ||
     editor.notes !== (prompt.notes ?? "")
   );
@@ -514,7 +587,7 @@ export async function saveEditor(): Promise<"saved" | "conflict" | "invalid"> {
       model: editor.model.trim() || undefined,
       tags,
       description: editor.description.trim() || undefined,
-      image: editor.image.trim() || undefined,
+      images: normalizeImageRefs(editor.images),
       promptContent: editor.promptContent,
       notes: editor.notes.trim() || undefined,
       extra: editor.isNew ? [] : (state.promptByKey[editor.promptKey!]?.extraFrontmatter ?? []),
@@ -582,7 +655,7 @@ export async function saveEditor(): Promise<"saved" | "conflict" | "invalid"> {
                 model: parsed.model ?? "",
                 tagsInput: parsed.tags.join(", "),
                 description: parsed.description ?? "",
-                image: parsed.image ?? "",
+                images: parsed.images,
                 promptContent: parsed.promptContent,
                 notes: parsed.notes ?? "",
                 originalContent: fresh.content,

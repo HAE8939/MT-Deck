@@ -16,7 +16,11 @@ export interface Prompt {
   model?: string;
   tags: string[];
   description?: string;
-  image?: string;
+  /**
+   * Ordered image references, library-relative (`src/..`) or remote (ISSUE-008).
+   * Index 0 is the cover shown on the card and the share PNG. Empty when none.
+   */
+  images: string[];
   promptContent: string;
   notes?: string;
   /** Unknown frontmatter keys preserved on rewrite (no silent data loss). */

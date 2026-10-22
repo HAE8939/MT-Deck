@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { useApp, selectPrompt, toggleFavorite } from "../../store/store";
 import { StarIcon } from "../common/icons";
@@ -19,7 +19,12 @@ export function PromptCard({
   const app = useApp();
   const isFavorite = prompt.id !== null && app.favorites.includes(prompt.id);
   const [imageFailed, setImageFailed] = useState(false);
-  const imagePath = app.libraryRoot ? resolvePromptImagePath(app.libraryRoot, prompt.image) : null;
+  // Card media shows the cover only; the rest lives in the detail panel (ISSUE-008).
+  const cover = prompt.images[0];
+  const imagePath = app.libraryRoot ? resolvePromptImagePath(app.libraryRoot, cover) : null;
+  // A repaired or replaced cover must get a fresh load attempt, not inherit the
+  // failed state from the previous reference.
+  useEffect(() => setImageFailed(false), [cover]);
 
   return (
     <article
@@ -43,6 +48,11 @@ export function PromptCard({
           <div className="card-media-placeholder">
             <span>{imageFailed ? "图片未命中" : "Prompt Asset"}</span>
           </div>
+        )}
+        {prompt.images.length > 1 && (
+          <span className="card-media-count" title={`共 ${prompt.images.length} 张配图`}>
+            {prompt.images.length}
+          </span>
         )}
       </div>
       <div className="card-top">

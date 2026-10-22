@@ -22,6 +22,12 @@
 - **REJECTED**（2026-09-20 用户否决，勿再提）「图片生成模板」功能 —— `imageGeneration.ts` 已入回收站，store/测试/CSS 残留已清。
 - **DECIDED**（V2.1.0）侧栏状态机：`store` 里 `sidebarVisible`（手动偏好，持久化到 settings.json）+ `sidebarAutoCollapsed`（瞬态）。只在「详情 关→开」这一次转换上、且仅当手动偏好为显示时才自动收起；手动收起永不被自动流程推翻；详情打开期间手动展开 = 明确意图，关详情后不再自动收。有效可见性 = 两者与运算，读 `isSidebarVisible()`。**所有打开详情的入口必须走 `selectPrompt()`**，旁路会绕过状态机。
 - **DECIDED**（V2.1.0）图片入口：编辑器 `image` 字段可手填相对路径/远程地址，也可「选择图片」→ Rust `pick_image` 把图**复制进 `<库>/src/`**（重名加序号）后写回 `src/xxx.png`。`saveEditor` 统一用 `editor.image`（不再从旧 frontmatter 回带）。
+- **DECIDED**（ISSUE-008 · 2026-10-20 落地并验收通过，尚未随版本发布）卡片支持 1–8 张图，上一条的单值字段被它取代：
+  - **真源换成 `images:` YAML 列表**（方案 B）。解析时 `images` 优先、为空则回落老字段 `image`（读成单元素列表），两个 key 都不落入 `extra`；保存统一写 `images:`、不再写 `image:`，老卡片无需迁移即正常显示。序列化复用 `yamlScalar`，远程地址含 `:` 会被加引号，回读靠 `stripQuotes` 还原，可 round-trip。
+  - **第 1 张 = 主图**：卡片封面位与分享卡 PNG 封面都只用 `images[0]`；卡片右下角显示张数角标（>1 时）。详情页 = 主图 + 缩略图条点选切换 + `n / 总数` 角标。
+  - **8 张只约束“添加”动作**：满额禁用按钮并在 hint 说明；Rust `pick_images` 收到剩余额度后**先截断再复制**（否则 src/ 会留孤儿），返回值带 `truncated` / `failed` 计数，JS 侧 `addImages()` 再兜一层去重，toast 如实报“几张没加上 / 几张复制失败”。手写的超限列表读取时**不静默截断**，完整读出、详情页换行铺开。
+  - 编辑器 = 缩略图条 + 每张“设为封面 / 前移 / 后移 / 移除”，**明确不上拖拽**（引导页拖拽翻页已被否决的先例）。删除只解除引用，`src/` 里的副本保留（可能被别的卡片共用，且不做不可逆删除）。
+  - 纯函数全部放 `services/imageAssets.ts`（`MAX_PROMPT_IMAGES` / `addImages` / `moveImage` / `makeImagePrimary` / `removeImageAt` / `normalizeImageRefs` / `sameImageList`），单测在 `tests/promptImages.test.ts`。
 - **DECIDED**（V2.1.0）分享卡 = **导出 PNG 图文卡**（`services/shareCardImage.ts` Canvas 2D 现场绘制 → 系统「另存为」选路径 → `write_image_base64` 落盘），详情页为**图标态**入口。**REJECTED**（2026-09-30 用户否决）纯文本图文卡——「配图：src/x.png」对收件人无意义且与「复制提示词」重叠，`shareCard.ts` 已入回收站。**DEFERRED** 写剪贴板 / 系统分享面板 / 分享链接。
 - **注意**：HAE 反感把单一视觉风格（例如线稿）当万能答案反复套用。视觉/设计任务先展开多个不同方向，再给推荐。
 
@@ -30,14 +36,18 @@
 **构建与测试**
 
 - Windows 下 `node --test tests/` 传目录参数会失败（报 `test at tests:1:1`），必须显式列出 `*.test.ts` 文件。
+- **被 `node --test` 加载的 src 模块，运行时 import 必须写全 `.ts` 扩展名**：`promptParser.ts` 一引入 `./imageAssets`（无扩展名）测试侧直接 `ERR_MODULE_NOT_FOUND`，因为 Node ESM 不做扩展名解析，而 Vite 与 tsc（`allowImportingTsExtensions`）都吃。纯类型 import 不受影响（编译期被擦除），所以这条坑只在引入运行时代码时踩到。
 - 验证链：`npm run build`（tsc + vite）+ `node --test <显式文件列表>`；改完 HMR 即生效，但应用被关掉后要重启 `npm run tauri dev`。
+- 改了 Rust 必须 `cargo check --offline`（`src-tauri/` 下，target 已缓存约 1 秒）——tsc 与 vite 全绿也不代表 Rust 能编过（`pick_files` 回调类型就是这么被抓出来的，见下）。
+- **沙箱里跑不动这两样**：`npm run build` 的 vite/esbuild 报 `Cannot read directory "..": Access is denied.`，cargo 报 `.cargo/bin` Bad address。都是宿主机路径权限问题，不是代码缺陷 → 直接 escalated 到宿主机重跑同一条命令。
 
 **Tauri 侧**
 
 - 托盘图标不显示 = `TrayIconBuilder` 漏了 `.icon()`。加 `.icon(app.default_window_icon().cloned().unwrap())`（2.0.1 已在 `src-tauri/src/main.rs` 修复）。
 - `tauri-plugin-single-instance` **必须首位注册**（排在 dialog / clipboard-manager 之前），否则第二个实例会先把窗口建出来再退出。唤回逻辑与托盘共用 `show_main_window()`，别写两份。
-- 在 **Rust 侧**用 `app.dialog().file()...pick_file()` 不需要 capability；只有 JS 侧 `plugin:dialog|open` 才要权限。因此 `pick_image` 这类自定义命令只走 `invoke`，`capabilities/default.json` 不用动。
+- 在 **Rust 侧**用 `app.dialog().file()...pick_file()` 不需要 capability；只有 JS 侧 `plugin:dialog|open` 才要权限。因此 `pick_images` 这类自定义命令只走 `invoke`，`capabilities/default.json` 不用动。
 - `pick_file` 回调给的是 `tauri_plugin_dialog::FilePath`（枚举 `Path` / `Url`），desktop 恒为 `Path`；`Url` 分支用 `url.to_file_path()` 兜底，别 `to_string()` 直接当路径。
+- **`pick_files()`（多选）回调参数是 `Option<Vec<FilePath>>`，不是 `Vec<FilePath>`**——取消是 `None`。照单选的样子写会 E0308 编译失败。命令参数直接加 `limit: usize` 即可（tauri 自己反序列化）。
 - 复制进库的图片落在库根之下即自动可读——asset 协议在 `load_library` 里已 `allow_directory(root, true)` 递归放权，新增图不用改 scope。
 - **把 asset 协议图片画进 canvas 会污染画布**：`convertFileSrc()` 的 `http://asset.localhost/...` 是跨域源，`drawImage` 后 `toDataURL/toBlob` 直接抛 SecurityError。导出分享卡的做法：Rust `read_image_base64` 取字节 → JS `atob` → `new Blob(...)` → `URL.createObjectURL` → `img.decode()`（`blob:` 同源，不污染）。
 - 二进制过 IPC 用 **base64 + 普通 JSON**，别急着上 raw body：`invoke(cmd, args, {headers:{'Content-Type':'application/octet-stream'}, body})` 与 `{responseType:'arraybuffer'}` 的实现藏在注入脚本里、不好静态核实；分享卡这种一次性动作多 37% 体积完全可接受。

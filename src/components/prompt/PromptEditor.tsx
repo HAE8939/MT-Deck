@@ -1,16 +1,20 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   useApp,
   updateEditor,
   saveEditor,
   requestCloseEditor,
-  pickEditorImage,
+  addEditorImages,
+  addEditorImageReference,
+  removeEditorImage,
+  moveEditorImage,
+  makeEditorImagePrimary,
 } from "../../store/store";
 import { deriveFolders } from "../../store/store";
 import { sanitizeFilename } from "../../services/promptParser";
-import { isRemoteImageReference, resolvePromptImagePath } from "../../services/imageAssets";
-import { XIcon, ImageIcon } from "../common/icons";
+import { MAX_PROMPT_IMAGES, isRemoteImageReference, resolvePromptImagePath } from "../../services/imageAssets";
+import { XIcon, ImageIcon, ChevronLeftIcon, ChevronRightIcon } from "../common/icons";
 
 /**
  * Structured prompt editor (spec §12). Ctrl+S saves; Esc asks before discarding.
@@ -19,10 +23,17 @@ export function PromptEditor() {
   const app = useApp();
   const editor = app.editor;
   const titleRef = useRef<HTMLInputElement>(null);
+  /** Hand-typed reference, staged in the input until “添加地址”. */
+  const [manualRef, setManualRef] = useState("");
 
   useEffect(() => {
     if (editor) titleRef.current?.focus();
   }, [editor?.isNew]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A different card means a different draft — never carry a half-typed path over.
+  useEffect(() => {
+    setManualRef("");
+  }, [editor?.isNew, editor?.promptKey]);
 
   const folderOptions = useMemo(() => {
     const set = new Set<string>();
@@ -36,9 +47,13 @@ export function PromptEditor() {
     ? `${sanitizeFilename(editor.title || "未命名")}.md`
     : (app.promptByKey[editor.promptKey ?? ""]?.fileName ?? "");
 
-  const previewPath = app.libraryRoot
-    ? resolvePromptImagePath(app.libraryRoot, editor.image)
-    : null;
+  const imagesFull = editor.images.length >= MAX_PROMPT_IMAGES;
+
+  const submitManualRef = () => {
+    if (!manualRef.trim()) return;
+    addEditorImageReference(manualRef);
+    setManualRef("");
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,54 +150,134 @@ export function PromptEditor() {
           </div>
 
           <div className="field">
-            <label htmlFor="f-image">图片</label>
+            <div className="field-label-row">
+              <label htmlFor="f-image-ref">图片</label>
+              <span className="field-count">
+                {editor.images.length} / {MAX_PROMPT_IMAGES}
+              </span>
+            </div>
+
+            {editor.images.length > 0 && (
+              <ul className="image-list" aria-label="已关联图片">
+                {editor.images.map((ref, i) => {
+                  const path = app.libraryRoot
+                    ? resolvePromptImagePath(app.libraryRoot, ref)
+                    : null;
+                  const isRemote = isRemoteImageReference(ref);
+                  return (
+                    <li key={`${i}:${ref}`} className={`image-tile${i === 0 ? " is-primary" : ""}`}>
+                      <div className="image-tile-media" title={ref}>
+                        {path ? (
+                          <img
+                            src={convertFileSrc(path)}
+                            alt={`配图 ${i + 1}`}
+                            onError={(e) => {
+                              e.currentTarget.closest(".image-tile-media")?.classList.add("is-broken");
+                            }}
+                          />
+                        ) : (
+                          <span className="image-tile-fallback">
+                            <ImageIcon size={18} />
+                            <span>{isRemote ? "远程地址" : "无本地文件"}</span>
+                          </span>
+                        )}
+                        {i === 0 && <span className="image-tile-badge">封面</span>}
+                      </div>
+                      <div className="image-tile-actions">
+                        {i > 0 ? (
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-mini"
+                            title="作为卡片封面与分享卡配图"
+                            onClick={() => makeEditorImagePrimary(i)}
+                          >
+                            设为封面
+                          </button>
+                        ) : (
+                          <span className="image-tile-placeholder">封面</span>
+                        )}
+                        <span className="image-tile-spacer" />
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          aria-label={`前移第 ${i + 1} 张图片`}
+                          title="前移"
+                          disabled={i === 0}
+                          onClick={() => moveEditorImage(i, -1)}
+                        >
+                          <ChevronLeftIcon size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          aria-label={`后移第 ${i + 1} 张图片`}
+                          title="后移"
+                          disabled={i === editor.images.length - 1}
+                          onClick={() => moveEditorImage(i, 1)}
+                        >
+                          <ChevronRightIcon size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-btn icon-btn-danger"
+                          aria-label={`移除第 ${i + 1} 张图片`}
+                          title="移除（资料库 src/ 中的文件保留）"
+                          onClick={() => removeEditorImage(i)}
+                        >
+                          <XIcon size={14} />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
             <div className="image-row">
               <input
-                id="f-image"
+                id="f-image-ref"
                 type="text"
-                value={editor.image}
-                onChange={(e) => updateEditor({ image: e.target.value })}
+                value={manualRef}
+                onChange={(e) => setManualRef(e.target.value)}
+                onKeyDown={(e) => {
+                  // Enter stages the reference instead of submitting the form.
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    submitManualRef();
+                  }
+                }}
                 placeholder="src/example.png 或 http(s) 图片地址"
                 spellCheck={false}
               />
               <button
                 type="button"
                 className="btn btn-ghost"
-                onClick={() => void pickEditorImage()}
-                title="选择一张本地图片，复制进资料库 src/"
+                disabled={!manualRef.trim() || imagesFull}
+                onClick={submitManualRef}
+                title={imagesFull ? `最多 ${MAX_PROMPT_IMAGES} 张图片，先移除一张` : "把上面填写的地址加入图片列表"}
+              >
+                添加地址
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={imagesFull}
+                onClick={() => void addEditorImages()}
+                title={
+                  imagesFull
+                    ? `最多 ${MAX_PROMPT_IMAGES} 张图片，先移除一张`
+                    : `可多选，最多再加 ${MAX_PROMPT_IMAGES - editor.images.length} 张，复制进资料库 src/`
+                }
               >
                 <ImageIcon size={15} />
                 选择图片
               </button>
-              {editor.image.trim() && (
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="清除图片"
-                  title="清除图片"
-                  onClick={() => updateEditor({ image: "" })}
-                >
-                  <XIcon size={15} />
-                </button>
-              )}
             </div>
-            {editor.image.trim() && !isRemoteImageReference(editor.image) ? (
-              <div className="image-preview">
-                <img
-                  src={convertFileSrc(previewPath!)}
-                  alt="图片预览"
-                  onError={(e) => {
-                    e.currentTarget.closest(".image-preview")?.classList.add("is-error");
-                  }}
-                />
-              </div>
-            ) : (
-              <div className="field-hint">
-                {isRemoteImageReference(editor.image)
-                  ? "远程地址仅作记录，卡片不会联网加载图片。"
-                  : "选中的图片会复制进资料库 src/，随库迁移不丢图；也可直接填相对路径。"}
-              </div>
-            )}
+            <div className="field-hint">
+              {imagesFull
+                ? `已达 ${MAX_PROMPT_IMAGES} 张上限，移除一张后可继续添加。`
+                : "选中的图片会复制进资料库 src/，随库迁移不丢图；第一张作为卡片封面，其余在详情页查看。"}
+            </div>
           </div>
 
           <div className="field field-prompt">

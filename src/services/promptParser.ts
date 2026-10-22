@@ -1,4 +1,7 @@
 import type { Prompt } from "../types/prompt";
+// `.ts` on purpose: this module is also loaded by `node --test`, which has no
+// extension resolution. Vite and tsc (allowImportingTsExtensions) accept it as-is.
+import { normalizeImageRefs } from "./imageAssets.ts";
 
 /**
  * Tolerant Markdown prompt parser.
@@ -11,13 +14,14 @@ export interface ParsedMarkdown {
   model?: string;
   tags: string[];
   description?: string;
-  image?: string;
+  /** Ordered image references; index 0 is the cover (ISSUE-008). Empty when none. */
+  images: string[];
   extra: Array<[string, string | string[]]>;
   promptContent: string;
   notes?: string;
 }
 
-const KNOWN_KEYS = new Set(["id", "title", "model", "tags", "description", "image"]);
+const KNOWN_KEYS = new Set(["id", "title", "model", "tags", "description", "image", "images"]);
 
 function stripQuotes(value: string): string {
   if (
@@ -131,11 +135,21 @@ export function parsePromptMarkdown(raw: string): ParsedMarkdown {
     model: asString(meta.model),
     tags,
     description: asString(meta.description),
-    image: asString(meta.image),
+    // ISSUE-008: `images` wins when present, otherwise the legacy single `image`
+    // scalar is read as a one-entry list. Both keys stay out of `extra`, so a save
+    // collapses them onto `images:` instead of duplicating the reference.
+    images: readImageRefs(meta),
     extra,
     promptContent,
     notes,
   };
+}
+
+function readImageRefs(meta: Record<string, string | string[]>): string[] {
+  const asList = (value: string | string[] | undefined): string[] =>
+    Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
+  const list = normalizeImageRefs(asList(meta.images));
+  return list.length > 0 ? list : normalizeImageRefs(asList(meta.image));
 }
 
 function yamlScalar(value: string): string {
@@ -151,7 +165,8 @@ export interface SerializedPrompt {
   model?: string;
   tags: string[];
   description?: string;
-  image?: string;
+  /** Written as a YAML list under `images:` (ISSUE-008). */
+  images: string[];
   promptContent: string;
   notes?: string;
   extra: Array<[string, string | string[]]>;
@@ -169,7 +184,10 @@ export function serializePromptMarkdown(input: SerializedPrompt): string {
   if (input.description) {
     lines.push("", `description: ${yamlScalar(input.description)}`);
   }
-  if (input.image) lines.push("", `image: ${yamlScalar(input.image)}`);
+  if (input.images.length > 0) {
+    lines.push("", "images:");
+    for (const ref of input.images) lines.push(`  - ${yamlScalar(ref)}`);
+  }
   for (const [key, value] of input.extra) {
     if (Array.isArray(value)) {
       lines.push("", `${key}:`);
@@ -218,7 +236,7 @@ export function buildPrompt(
     model: parsed.model,
     tags: parsed.tags,
     description: parsed.description,
-    image: parsed.image,
+    images: parsed.images,
     promptContent: parsed.promptContent,
     notes: parsed.notes,
     extraFrontmatter: parsed.extra,

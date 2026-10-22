@@ -91,6 +91,24 @@
   color: var(--color-accent-brass);
 }
 
+/* Disabled controls keep their tooltip reachable, so only dim them (ISSUE-008). */
+.btn:disabled,
+.icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  background: transparent;
+  border-color: var(--color-hairline);
+  color: var(--color-ink);
+}
+
+.icon-btn:disabled:hover {
+  background: transparent;
+  color: var(--color-ink-muted);
+}
+
 /* ---------------- Focus states (spec §26: 2px brass, 2px offset) ---------------- */
 
 button:focus-visible,
@@ -126,6 +144,7 @@ textarea:focus-visible,
 }
 
 .card-media {
+  position: relative;
   aspect-ratio: 4 / 3;
   width: calc(100% + 40px);
   margin: -20px -20px 4px;
@@ -157,6 +176,21 @@ textarea:focus-visible,
 .detail-media.is-error .detail-media-placeholder {
   color: var(--color-danger);
   background: color-mix(in srgb, var(--color-danger) 10%, var(--color-ground));
+}
+
+/* Remaining images beyond the cover are surfaced in the detail panel (ISSUE-008). */
+.card-media-count {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 1px 6px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
 }
 
 .card-top {

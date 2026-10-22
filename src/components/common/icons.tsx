@@ -159,6 +159,9 @@ export const ShareIcon = createIcon(
 /** Sidebar toggle, expanded state: points at the direction it will collapse to. */
 export const ChevronLeftIcon = createIcon(<path d="m15 18-6-6 6-6" />);
 
+/** Mirror of ChevronLeftIcon, used for image reordering in the editor. */
+export const ChevronRightIcon = createIcon(<path d="m9 18 6-6-6-6" />);
+
 /** Sidebar toggle, collapsed state: a small round pull to bring the sidebar back. */
 export const CircleIcon = createIcon(<circle cx="12" cy="12" r="8" />);
 

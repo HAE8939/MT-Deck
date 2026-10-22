@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp, selectPrompt, copyPrompt, exportShareCard, duplicatePrompt, openEditor, requestDelete, requestRename, revealFile, toggleFavorite } from "../../store/store";
-import { XIcon, CopyIcon, EditIcon, TrashIcon, ExternalLinkIcon, StarIcon, EditIcon as RenameIcon, LayersIcon, ShareIcon } from "../common/icons";
+import { XIcon, CopyIcon, EditIcon, TrashIcon, ExternalLinkIcon, StarIcon, EditIcon as RenameIcon, LayersIcon, ShareIcon, ImageIcon } from "../common/icons";
 import type { Prompt } from "../../types/prompt";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { resolvePromptImagePath } from "../../services/imageAssets";
+import { isRemoteImageReference, resolvePromptImagePath } from "../../services/imageAssets";
 
 function formatDateTime(ms: number): string {
   if (!ms) return "";
@@ -14,8 +14,28 @@ function formatDateTime(ms: number): string {
 export function PromptDetail({ prompt }: { prompt: Prompt }) {
   const app = useApp();
   const isFavorite = prompt.id !== null && app.favorites.includes(prompt.id);
-  const [imageFailed, setImageFailed] = useState(false);
-  const imagePath = app.libraryRoot ? resolvePromptImagePath(app.libraryRoot, prompt.image) : null;
+  const images = prompt.images;
+  /** Active slot in the viewer; index 0 is the cover (ISSUE-008). */
+  const [active, setActive] = useState(0);
+  /** References whose load failed, tracked per reference so one dead image
+   *  never blanks out the whole strip. */
+  const [failed, setFailed] = useState<string[]>([]);
+
+  // The panel is reused when switching cards, so the viewer must not carry over
+  // the previous card's slot or its load failures.
+  useEffect(() => {
+    setActive(0);
+    setFailed([]);
+  }, [prompt.key]);
+
+  const index = images.length > 0 ? Math.min(active, images.length - 1) : 0;
+  const current = images[index];
+  const currentPath = app.libraryRoot ? resolvePromptImagePath(app.libraryRoot, current) : null;
+  const currentFailed = !!current && failed.includes(current);
+  const markFailed = (ref: string | undefined) => {
+    if (!ref) return;
+    setFailed((prev) => (prev.includes(ref) ? prev : [...prev, ref]));
+  };
 
   return (
     <aside className="detail-panel" aria-label="提示词详情">
@@ -87,21 +107,60 @@ export function PromptDetail({ prompt }: { prompt: Prompt }) {
         )}
 
         {prompt.description && <p className="detail-description">{prompt.description}</p>}
-        <div className={`detail-media${imageFailed ? " is-error" : ""}`}>
-          {imagePath && !imageFailed ? (
-            <img className="detail-image" src={convertFileSrc(imagePath)} alt={`${prompt.title} 关联图片`} onError={() => setImageFailed(true)} />
+        <div className={`detail-media${currentFailed ? " is-error" : ""}`}>
+          {currentPath && !currentFailed ? (
+            <img
+              className="detail-image"
+              src={convertFileSrc(currentPath)}
+              alt={`${prompt.title} 配图 ${index + 1}`}
+              onError={() => markFailed(current)}
+            />
           ) : (
             <div className="detail-media-placeholder">
               <span className="placeholder-hint">
-                {prompt.image
-                  ? imageFailed
-                    ? "图片未命中 · 点「编辑」重新选择，或把图片放进资料库的 src/ 文件夹"
-                    : "图片地址已记录，暂不作联网加载"
-                  : "暂无关联图片 · 点「编辑」→「选择图片」即可配图"}
+                {current
+                  ? isRemoteImageReference(current)
+                    ? `第 ${index + 1} 张为远程地址，仅作记录，暂不作联网加载`
+                    : `第 ${index + 1} 张图片未命中 · 点“编辑”重新选择，或把图片放进资料库的 src/ 文件夹`
+                  : "暂无关联图片 · 点“编辑”→“选择图片”即可配图"}
               </span>
             </div>
           )}
+          {images.length > 1 && (
+            <span className="detail-media-count">
+              {index + 1} / {images.length}
+            </span>
+          )}
         </div>
+
+        {images.length > 1 && (
+          <div className="detail-thumbs" aria-label="配图列表">
+            {images.map((ref, i) => {
+              const path = app.libraryRoot ? resolvePromptImagePath(app.libraryRoot, ref) : null;
+              const isBroken = failed.includes(ref);
+              return (
+                <button
+                  key={`${i}:${ref}`}
+                  type="button"
+                  className={`detail-thumb${i === index ? " is-active" : ""}${isBroken ? " is-broken" : ""}`}
+                  aria-label={`查看第 ${i + 1} 张图片`}
+                  aria-current={i === index ? "true" : undefined}
+                  title={ref}
+                  onClick={() => setActive(i)}
+                >
+                  {path && !isBroken ? (
+                    <img src={convertFileSrc(path)} alt="" onError={() => markFailed(ref)} />
+                  ) : (
+                    <span className="detail-thumb-fallback">
+                      {isBroken ? "!" : <ImageIcon size={14} />}
+                    </span>
+                  )}
+                  <span className="detail-thumb-index">{i + 1}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div className="detail-body">
           <div className="detail-section-label">提示词</div>

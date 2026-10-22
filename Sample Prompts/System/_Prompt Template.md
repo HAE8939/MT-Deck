@@ -5,7 +5,7 @@ model:
 tags:
   - 标签1
 description: 一句话说明这条提示词做什么。
-image:
+images:
 ---
 
 # Prompt

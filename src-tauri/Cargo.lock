@@ -2255,7 +2255,7 @@ dependencies = [
 
 [[package]]
 name = "mt-deck"
-version = "2.1.0"
+version = "2.2.0"
 dependencies = [
  "base64 0.22.1",
  "notify",
